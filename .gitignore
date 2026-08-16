@@ -26,6 +26,10 @@ api/
 _site/
 docs/**/obj/
 *.log
+!samples/HelloWorld.Editor.Log/
+!samples/HelloWorld.Editor.Log/**
+samples/HelloWorld.Editor.Log/bin/
+samples/HelloWorld.Editor.Log/obj/
 
 ## Local / temp
 _reflect/

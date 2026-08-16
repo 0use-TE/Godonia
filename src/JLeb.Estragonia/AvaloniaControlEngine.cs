@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using Avalonia;
 using Avalonia.Controls;
@@ -20,24 +21,60 @@ namespace JLeb.Estragonia;
 /// </summary>
 public sealed class AvaloniaControlEngine : IDisposable {
 
-	private readonly GdControl _owner;
+	private static readonly object s_instancesLock = new();
+	private static readonly List<WeakReference<AvaloniaControlEngine>> s_instances = [];
+
+	private GdControl? _owner;
 	private AvControl? _control;
 	private double _renderScaling = 1.0;
 	private GodotTopLevel? _topLevel;
 	private bool _disposed;
+	private bool _eventsHooked;
 
-	public AvaloniaControlEngine(GdControl owner)
-		=> _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+	public AvaloniaControlEngine(GdControl owner) {
+		_owner = owner ?? throw new ArgumentNullException(nameof(owner));
+		lock (s_instancesLock)
+			s_instances.Add(new WeakReference<AvaloniaControlEngine>(this));
+	}
+
+	/// <summary>
+	/// Tears down every live TopLevel before Godot unloads the game collectible ALC.
+	/// The engine type lives in this persistent assembly; <c>_owner</c> does not.
+	/// </summary>
+	public static void DisposeAll() {
+		AvaloniaControlEngine[] live;
+		lock (s_instancesLock) {
+			var found = new List<AvaloniaControlEngine>();
+			for (var i = s_instances.Count - 1; i >= 0; i--) {
+				if (!s_instances[i].TryGetTarget(out var engine) || engine._disposed) {
+					s_instances.RemoveAt(i);
+					continue;
+				}
+
+				found.Add(engine);
+			}
+
+			live = found.ToArray();
+		}
+
+		foreach (var engine in live)
+			engine.Dispose();
+
+		if (live.Length > 0)
+			GD.Print($"Estragonia: disposed {live.Length} Avalonia top-level(s) for assembly reload.");
+	}
 
 	/// <summary>Gets or sets the underlying Avalonia control that will be rendered.</summary>
 	public AvControl? Control {
 		get => _control;
 		set {
-			if (ReferenceEquals(_control, value))
+			if (_disposed || ReferenceEquals(_control, value))
 				return;
 
 			if (value is not null)
 				GodotPlatform.EnsureAssetLoader(value.GetType().Assembly);
+			else
+				GodotPlatform.EnsureAssetLoader(typeof(EditorAvaloniaApp).Assembly);
 
 			_control = value;
 
@@ -56,7 +93,7 @@ public sealed class AvaloniaControlEngine : IDisposable {
 
 			_renderScaling = value;
 			OnResized();
-			_owner.QueueRedraw();
+			_owner?.QueueRedraw();
 		}
 	}
 
@@ -81,12 +118,23 @@ public sealed class AvaloniaControlEngine : IDisposable {
 	public Texture2D GetTexture()
 		=> GetTopLevel().Impl.GetGdTexture();
 
+	/// <summary>Whether the Avalonia top-level has been created.</summary>
+	public bool IsInitialized
+		=> _topLevel is not null && !_disposed;
+
 	public void Ready() {
-		if (Engine.IsEditorHint())
+		if (_disposed || _owner is not { } owner)
 			return;
 
+		if (_topLevel is not null) {
+			NotifyResized();
+			return;
+		}
+
+		// Game hosts and editor docks share this path once UseGodot() has run.
+
 		// Skia outputs a premultiplied alpha image, ensure we got the correct blend mode if the user didn't specify any
-		_owner.Material ??= new CanvasItemMaterial {
+		owner.Material ??= new CanvasItemMaterial {
 			BlendMode = CanvasItemMaterial.BlendModeEnum.PremultAlpha,
 			LightMode = CanvasItemMaterial.LightModeEnum.Unshaded
 		};
@@ -113,16 +161,36 @@ public sealed class AvaloniaControlEngine : IDisposable {
 		_topLevel.Prepare();
 		_topLevel.StartRendering();
 
-		_owner.Resized += OnResized;
-		_owner.FocusEntered += OnFocusEntered;
-		_owner.FocusExited += OnFocusExited;
-		_owner.MouseExited += OnMouseExited;
+		// Game: C# events are fine. Editor: those become dead ManagedCallables after
+		// assembly reload — AvaloniaControl forwards Node notifications instead.
+		if (!Engine.IsEditorHint() && !_eventsHooked) {
+			owner.Resized += OnResized;
+			owner.FocusEntered += OnFocusEntered;
+			owner.FocusExited += OnFocusExited;
+			owner.MouseExited += OnMouseExited;
+			_eventsHooked = true;
+		}
 
-		if (_owner.HasFocus())
+		if (owner.HasFocus())
 			OnFocusEntered();
 	}
 
+	public void NotifyResized()
+		=> OnResized();
+
+	public void NotifyFocusEntered()
+		=> OnFocusEntered();
+
+	public void NotifyFocusExited()
+		=> _topLevel?.Impl.OnLostFocus();
+
+	public void NotifyMouseExited()
+		=> _topLevel?.Impl.OnMouseExited(Time.GetTicksMsec());
+
 	public void Process() {
+		if (_disposed || _topLevel is null)
+			return;
+
 		GodotPlatform.TriggerRenderTick();
 
 		// We might have cleared the texture after resize to prevent corruption on AMD GPU (see GodotSkiaGpuRenderSession),
@@ -132,10 +200,10 @@ public sealed class AvaloniaControlEngine : IDisposable {
 	}
 
 	public void Draw() {
-		if (_topLevel is null)
+		if (_topLevel is null || _owner is not { } owner)
 			return;
 
-		_owner.DrawTexture(_topLevel.Impl.GetGdTexture(), Vector2.Zero);
+		owner.DrawTexture(_topLevel.Impl.GetGdTexture(), Vector2.Zero);
 	}
 
 	public void GuiInput(InputEvent @event) {
@@ -152,13 +220,20 @@ public sealed class AvaloniaControlEngine : IDisposable {
 			|| @event is InputEventMouseMotion
 			|| @event is InputEventScreenTouch
 			|| @event is InputEventScreenDrag) {
-			_owner.AcceptEvent();
+			_owner?.AcceptEvent();
 		}
 	}
 
 	public bool HasPoint(Vector2 point) {
-		if (_topLevel is null)
+		if (_owner is not { } owner)
 			return false;
+
+		var size = owner.Size;
+		if (point.X < 0f || point.Y < 0f || point.X > size.X || point.Y > size.Y)
+			return false;
+
+		if (_topLevel is null)
+			return CaptureEmptyHits;
 
 		var avaloniaPoint = point.ToAvaloniaPoint() / _topLevel.RenderScaling;
 		if (_topLevel.InputHitTest(avaloniaPoint, false) is not null)
@@ -168,18 +243,21 @@ public sealed class AvaloniaControlEngine : IDisposable {
 	}
 
 	private PixelSize GetFrameSize()
-		=> PixelSize.FromSize(_owner.Size.ToAvaloniaSize(), 1.0);
+		=> PixelSize.FromSize((_owner?.Size ?? default).ToAvaloniaSize(), 1.0);
 
 	private void RenderAvalonia()
-		=> _topLevel!.Impl.OnDraw(new Rect(_owner.Size.ToAvaloniaSize()));
+		=> _topLevel!.Impl.OnDraw(new Rect((_owner?.Size ?? default).ToAvaloniaSize()));
 
 	private bool _hasCustomMouseCursor;
 
 	private void OnAvaloniaCursorChanged(ICursorImpl? cursor) {
+		if (_owner is not { } owner)
+			return;
+
 		if (cursor is GodotCustomCursorImpl custom) {
 			GdInput.SetCustomMouseCursor(custom.Texture, GdInput.CursorShape.Arrow, custom.Hotspot);
 			_hasCustomMouseCursor = true;
-			_owner.MouseDefaultCursorShape = GdControl.CursorShape.Arrow;
+			owner.MouseDefaultCursorShape = GdControl.CursorShape.Arrow;
 			return;
 		}
 
@@ -188,7 +266,7 @@ public sealed class AvaloniaControlEngine : IDisposable {
 			_hasCustomMouseCursor = false;
 		}
 
-		_owner.MouseDefaultCursorShape =
+		owner.MouseDefaultCursorShape =
 			(cursor as GodotStandardCursorImpl)?.CursorShape ?? GdControl.CursorShape.Arrow;
 	}
 
@@ -298,11 +376,13 @@ public sealed class AvaloniaControlEngine : IDisposable {
 		// once we're done with the Avalonia ones. However, if there's no Godot control, we want to act as Cycle.
 		var nextElement = GetNextTabElement(currentElement, direction);
 		if (nextElement is null) {
-			var nextGdControl = direction switch {
-				NavigationDirection.Next => _owner.FindNextValidFocus(),
-				NavigationDirection.Previous => _owner.FindPrevValidFocus(),
-				_ => null
-			};
+			var nextGdControl = _owner is not { } owner
+				? null
+				: direction switch {
+					NavigationDirection.Next => owner.FindNextValidFocus(),
+					NavigationDirection.Previous => owner.FindPrevValidFocus(),
+					_ => null
+				};
 
 			if ((nextGdControl is null || nextGdControl == _owner) && (object) currentElement != _topLevel)
 				nextElement = GetNextTabElement(_topLevel, direction);
@@ -342,15 +422,38 @@ public sealed class AvaloniaControlEngine : IDisposable {
 
 		_disposed = true;
 
-		if (_topLevel is not null) {
-			_owner.Resized -= OnResized;
-			_owner.FocusEntered -= OnFocusEntered;
-			_owner.FocusExited -= OnFocusExited;
-			_owner.MouseExited -= OnMouseExited;
+		if (_eventsHooked && _owner is not null) {
+			try {
+				_owner.Resized -= OnResized;
+				_owner.FocusEntered -= OnFocusEntered;
+				_owner.FocusExited -= OnFocusExited;
+				_owner.MouseExited -= OnMouseExited;
+			}
+			catch {
+				// Owner may already be a disposed GodotObject during ALC unload.
+			}
 
-			_topLevel.Dispose();
+			_eventsHooked = false;
+		}
+
+		if (_topLevel is not null) {
+			try {
+				_topLevel.Content = null;
+				_topLevel.Impl.CursorChanged = null;
+				// Do not clear Closed: TopLevel.HandleClosed stops MediaContext rendering.
+				_topLevel.StopRendering();
+				_topLevel.Dispose();
+			}
+			catch (Exception ex) {
+				GD.PrintErr($"Estragonia: TopLevel dispose failed: {ex.Message}");
+			}
+
 			_topLevel = null;
 		}
+
+		_control = null;
+		_owner = null;
+		GodotPlatform.EnsureAssetLoader(typeof(EditorAvaloniaApp).Assembly);
 	}
 
 }

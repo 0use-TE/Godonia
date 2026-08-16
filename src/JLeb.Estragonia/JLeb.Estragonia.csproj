@@ -10,7 +10,7 @@
 		<PackageId>Ouse.Estragonia</PackageId>
 		<PackageReadmeFile>readme.md</PackageReadmeFile>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<Description>Bridge embedding Avalonia UI inside Godot 4 (Vulkan / Skia). Host scripts AvaloniaControl/UiHost must live in your Godot project (see template/sample).</Description>
+		<Description>Bridge embedding Avalonia UI inside Godot 4 (Vulkan / Skia). Host scripts AvaloniaControl/UiHost are inserted into Godot projects on build when missing.</Description>
 		<PackageTags>avalonia;godot;ui;game</PackageTags>
 	</PropertyGroup>
 
@@ -18,6 +18,7 @@
 		<PackageReference Include="GodotSharp" VersionOverride="4.7.1" />
 		<PackageReference Include="Avalonia.Skia" />
 		<PackageReference Include="Avalonia.HarfBuzz" />
+		<PackageReference Include="Avalonia.Themes.Fluent" />
 		<!-- Avalonia 12: ISkiaGpu / related types are internal; required for the shared-VkImage path. -->
 		<PackageReference Include="IgnoresAccessChecksToGenerator" PrivateAssets="all" />
 	</ItemGroup>
@@ -28,7 +29,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Compile Remove="host-scripts/**" />
 		<None Include="../../readme.md" Pack="true" PackagePath="/" Visible="false" />
+		<None Include="host-scripts/**" Pack="true" PackagePath="host-scripts/" />
+		<None Include="build/Ouse.Estragonia.props" Pack="true" PackagePath="buildTransitive/" />
+		<None Include="build/Ouse.Estragonia.targets" Pack="true" PackagePath="buildTransitive/" />
 	</ItemGroup>
 
 	<!--

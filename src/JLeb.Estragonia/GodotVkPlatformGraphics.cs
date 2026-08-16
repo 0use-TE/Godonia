@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using Avalonia.Platform;
 
@@ -16,9 +14,6 @@ public sealed class GodotVkPlatformGraphics : IPlatformGraphics, IDisposable {
 		=> true;
 
 	internal GodotVkSkiaGpu GetSharedContext() {
-		if (Volatile.Read(ref _refCount) == 0)
-			ThrowDisposed();
-
 		if (_context is null || _context.IsLost) {
 			_context?.Dispose();
 			_context = null;
@@ -27,11 +22,6 @@ public sealed class GodotVkPlatformGraphics : IPlatformGraphics, IDisposable {
 
 		return _context;
 	}
-
-	[DoesNotReturn]
-	[MethodImpl(MethodImplOptions.NoInlining)]
-	private static void ThrowDisposed()
-		=> throw new ObjectDisposedException(nameof(GodotVkPlatformGraphics));
 
 	IPlatformGraphicsContext IPlatformGraphics.CreateContext()
 		=> throw new NotSupportedException();
@@ -43,8 +33,9 @@ public sealed class GodotVkPlatformGraphics : IPlatformGraphics, IDisposable {
 		=> Interlocked.Increment(ref _refCount);
 
 	public void Release() {
-		if (Interlocked.Decrement(ref _refCount) == 0)
-			Dispose();
+		Interlocked.Decrement(ref _refCount);
+		// Do not Dispose when the last TopLevel goes away. Avalonia's compositor still
+		// holds this instance; F5 recreates TopLevels on the same RenderingDevice.
 	}
 
 

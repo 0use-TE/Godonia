@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:Class="HelloWorld.Editor.Log.LogView">
+	<DockPanel Margin="8">
+		<StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+			<TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="Estragonia Log" />
+			<Button Content="Clear" Click="OnClearClick" />
+			<Button Content="Reload this plugin" Click="OnReloadClick" />
+		</StackPanel>
+		<ListBox x:Name="LogList" />
+	</DockPanel>
+</UserControl>

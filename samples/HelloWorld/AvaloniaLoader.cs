@@ -1,19 +1,28 @@
-﻿using Avalonia;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.Loader;
 using Godot;
 using JLeb.Estragonia;
 
 namespace HelloWorld;
 
-/// <summary>Autoload: Avalonia platform init + asset loader + IME. Once per run.</summary>
+/// <summary>Autoload: Avalonia platform init + IME. Once per process.</summary>
 public partial class AvaloniaLoader : Node {
 
-	public override void _Ready() {
-		AppBuilder
-			.Configure<App>()
-			.UseGodot()
-			.SetupWithoutStarting();
+	[ModuleInitializer]
+	internal static void HookGameAssemblyUnload() {
+		var alc = AssemblyLoadContext.GetLoadContext(typeof(AvaloniaLoader).Assembly);
+		if (alc is null || !alc.IsCollectible)
+			return;
 
-		GodotAvalonia.EnsureAssetLoader(typeof(App).Assembly);
+		alc.Unloading += _ => GodotAvalonia.ReleaseGameReferences();
+	}
+
+	public override void _Ready() {
+		if (Engine.IsEditorHint())
+			GodotAvalonia.EnsureStarted();
+		else
+			GodotAvalonia.EnsureStarted<App>();
+
 		GetWindow()?.SetImeActive(true);
 	}
 

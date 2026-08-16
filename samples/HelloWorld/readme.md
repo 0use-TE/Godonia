@@ -15,11 +15,25 @@ Estragonia 场景演示（左侧列表切换）。
 
 ## 宿主脚本
 
-本示例的 Godot 宿主类型在工程内（不在 NuGet）：
+Godot 节点类型必须在本工程内：
 
-- `AvaloniaControl.cs`
-- `UiHost.cs`
+- `AvaloniaControl.cs` / `UiHost.cs` — 游戏场景宿主
+- `AvaloniaEditorHost.cs` — 编辑器 Dock 宿主（两个插件共用）
 - `UserInterface.cs` → `CreateRoot()`
+
+`addons/` 里只留 Godot 薄壳：`plugin.cfg` + `plugin.json` + `EditorPlugin` 脚本。界面在独立工程，不要写进 addons。
+
+## 编辑器 Dock 与预览
+
+| 工程 | 作用 |
+|------|------|
+| `HelloWorld.Editor.Preview` | **启动项目**：桌面预览 Demo / Log（不经过 Godot） |
+| `HelloWorld.Editor.Demo` / `Log` | 插件 View；改完只编译该工程 |
+| `HelloWorld` | Godot 游戏 + 薄壳 EditorPlugin |
+
+在 IDE 把 **HelloWorld.Editor.Preview** 设为启动项目后 F5。插件工程不引用 `Avalonia.Desktop`，不要在插件项目上开 XAML 预览器。
+
+Godot 里看 Dock：先编 Demo/Log，再用 Godot 打开本目录。切回 Godot 会换页，不要点锤子。详见 [编辑器插件](../../docs/v1.0.0/zh-CN/editor-plugins.md)。
 
 ## 运行
 

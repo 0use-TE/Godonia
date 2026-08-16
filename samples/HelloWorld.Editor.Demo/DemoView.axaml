@@ -1,0 +1,16 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	x:Class="HelloWorld.Editor.Demo.DemoView">
+	<ScrollViewer>
+		<StackPanel Margin="16" Spacing="12">
+			<TextBlock x:Name="BuildStamp" Opacity="0.8" TextWrapping="Wrap" />
+			<TextBlock TextWrapping="Wrap"
+				Text="Edit this view in the IDE, build HelloWorld.Editor.Demo only, then focus Godot (or click Reload). The left dock should update without Failed to unload assemblies." />
+			<StackPanel Orientation="Horizontal" Spacing="8">
+				<Button Content="Reload this plugin" Click="OnReloadClick" />
+				<Button Content="Write to Estragonia Log" Click="OnLogClick" />
+			</StackPanel>
+			<TextBox PlaceholderText="Type here to confirm the dock is interactive" />
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

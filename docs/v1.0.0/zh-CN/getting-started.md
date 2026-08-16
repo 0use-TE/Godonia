@@ -64,39 +64,23 @@ Visual Studio：新建项目 → 搜 **Estragonia Godot App**（装完模板后�
 
 ## 教程 B — 给已有 Godot C# 工程加包
 
-**只装 NuGet 不够。** 还必须把宿主脚本复制进 Godot 工程。
-
 ```bash
 dotnet add package Ouse.Estragonia
 dotnet add package Semi.Avalonia
+dotnet build
 ```
 
-### 1. 把宿主脚本复制到 Godot 工程根目录
+`dotnet build` 会在缺少 `AvaloniaControl.cs` / `UiHost.cs` 时插入到 csproj 旁边（首次警告 `ESTRAGONIA001`）。请重载 Godot 以生成 `.uid`。
 
-从本仓库（或已生成的模板工程）复制下面 **两个文件** 到你的 `.csproj` / `project.godot` 旁边：
+类型仍编进 **你的 Godot 程序集**。不要把它们挪到类库。若不想自动插入：设 `EstragoniaInjectHostScripts` 为 `false`，再从包内 `host-scripts/` 手拷。
 
-| 文件 | 作用 |
-|------|------|
-| `AvaloniaControl.cs` | 渲染 Avalonia 的 Godot `Control` |
-| `UiHost.cs` | 焦点 + `CreateRoot()` 样板 |
-
-来源：
-
-- `templates/estragonia-godot/AvaloniaControl.cs`
-- `templates/estragonia-godot/UiHost.cs`
-- 或 `samples/HelloWorld/` 下同名文件
-
-文件内命名空间保持 `JLeb.Estragonia`（或同步改你的 `UserInterface`）。  
-**类名必须等于文件名。** 不要把这些类型只放在类库里。
-
-### 2. Avalonia `Application` + 主题
+### 1. Avalonia `Application` + 主题
 
 准备 `App.axaml` / `App.axaml.cs`（如 Semi）。
 
-### 3. Autoload（整个运行只调用一次）
+### 2. Autoload（整个进程只启动一次）
 
 ```csharp
-using Avalonia;
 using Godot;
 using JLeb.Estragonia;
 
@@ -104,19 +88,19 @@ public partial class AvaloniaLoader : Node
 {
     public override void _Ready()
     {
-        AppBuilder.Configure<App>()
-            .UseGodot()
-            .SetupWithoutStarting();
+        if (Engine.IsEditorHint())
+            GodotAvalonia.EnsureStarted();
+        else
+            GodotAvalonia.EnsureStarted<App>();
 
-        GodotAvalonia.EnsureAssetLoader(typeof(App).Assembly);
         GetWindow()?.SetImeActive(true);
     }
 }
 ```
 
-在 `project.godot` 里注册为 Autoload。
+在 `project.godot` 里注册为 Autoload。`EnsureStarted` 若已启动则是 no-op——不要 `Shutdown` 再启动。
 
-### 4. 场景宿主脚本
+### 3. 场景宿主脚本
 
 ```csharp
 using Avalonia.Controls;
@@ -138,7 +122,7 @@ public partial class UserInterface : UiHost
 ## 本仓库示例
 
 用 Godot 打开 `samples/HelloWorld`（通过工程引用本地库源码）。  
-示例里已经包含 `AvaloniaControl.cs` 和 `UiHost.cs`。
+示例里已经包含 `AvaloniaControl.cs` 和 `UiHost.cs`。编辑器 Dock：把解决方案启动项目设为 `HelloWorld.Editor.Preview` 可桌面预览；Godot 里先编译 `HelloWorld.Editor.Demo` / `Log`，见 [编辑器插件](editor-plugins.md)。
 
 ## 热重载
 

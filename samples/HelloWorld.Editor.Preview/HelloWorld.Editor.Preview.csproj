@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net10.0</TargetFramework>
+		<AssemblyName>HelloWorld.Editor.Preview</AssemblyName>
+		<RootNamespace>HelloWorld.Editor.Preview</RootNamespace>
+		<IsPackable>false</IsPackable>
+		<AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+		<EstragoniaInjectHostScripts>false</EstragoniaInjectHostScripts>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\HelloWorld.Editor.Demo\HelloWorld.Editor.Demo.csproj" />
+		<ProjectReference Include="..\HelloWorld.Editor.Log\HelloWorld.Editor.Log.csproj" />
+		<PackageReference Include="Avalonia.Desktop" />
+		<PackageReference Include="Avalonia.Themes.Fluent" />
+	</ItemGroup>
+
+</Project>

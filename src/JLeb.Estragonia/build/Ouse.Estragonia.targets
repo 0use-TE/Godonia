@@ -1,0 +1,92 @@
+<Project>
+
+	<!--
+		Inserts AvaloniaControl.cs / UiHost.cs into Godot C# projects that do not already have them.
+		Never overwrites an existing file (any directory under the project).
+		Does not run for ordinary class libraries, this package, or template pack projects.
+	-->
+	<Target Name="EstragoniaInjectHostScripts" BeforeTargets="BeforeCompile">
+
+		<PropertyGroup>
+			<_EstragoniaHostScriptsSourceDir>$([MSBuild]::EnsureTrailingSlash('$(EstragoniaHostScriptsSourceDir)'))</_EstragoniaHostScriptsSourceDir>
+			<_EstragoniaHostScriptsDir>$([MSBuild]::EnsureTrailingSlash('$(EstragoniaHostScriptsDir)'))</_EstragoniaHostScriptsDir>
+			<_EstragoniaExclude>$(MSBuildProjectDirectory)\.godot\**\*.cs;$(MSBuildProjectDirectory)\bin\**\*.cs;$(MSBuildProjectDirectory)\obj\**\*.cs</_EstragoniaExclude>
+
+			<_EstragoniaIsSelfPackage Condition="'$(PackageId)' == 'Ouse.Estragonia' OR '$(MSBuildProjectName)' == 'JLeb.Estragonia'">true</_EstragoniaIsSelfPackage>
+			<_EstragoniaIsTemplatePack Condition="'$(PackageType)' == 'Template'">true</_EstragoniaIsTemplatePack>
+
+			<_EstragoniaIsGodotProject>false</_EstragoniaIsGodotProject>
+			<_EstragoniaIsGodotProject Condition="'$(UsingGodotNETSdk)' == 'true'">true</_EstragoniaIsGodotProject>
+			<_EstragoniaHasGodotSharp Condition="@(PackageReference->AnyHaveMetadataValue('Identity', 'GodotSharp'))">true</_EstragoniaHasGodotSharp>
+			<_EstragoniaIsGodotProject Condition="'$(_EstragoniaIsGodotProject)' != 'true' AND '$(EnableDynamicLoading)' == 'true' AND '$(_EstragoniaHasGodotSharp)' == 'true'">true</_EstragoniaIsGodotProject>
+
+			<_EstragoniaShouldInject>false</_EstragoniaShouldInject>
+			<_EstragoniaShouldInject Condition="'$(_EstragoniaIsGodotProject)' == 'true' AND '$(_EstragoniaIsSelfPackage)' != 'true' AND '$(_EstragoniaIsTemplatePack)' != 'true'">true</_EstragoniaShouldInject>
+			<_EstragoniaShouldInject Condition="'$(EstragoniaInjectHostScripts)' == 'true'">true</_EstragoniaShouldInject>
+			<_EstragoniaShouldInject Condition="'$(EstragoniaInjectHostScripts)' == 'false'">false</_EstragoniaShouldInject>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<_EstragoniaExistingAvaloniaControl Include="$(MSBuildProjectDirectory)\**\AvaloniaControl.cs" Exclude="$(_EstragoniaExclude)" />
+			<_EstragoniaExistingUiHost Include="$(MSBuildProjectDirectory)\**\UiHost.cs" Exclude="$(_EstragoniaExclude)" />
+		</ItemGroup>
+
+		<PropertyGroup>
+			<_EstragoniaHasAvaloniaControl Condition="'@(_EstragoniaExistingAvaloniaControl)' != ''">true</_EstragoniaHasAvaloniaControl>
+			<_EstragoniaHasUiHost Condition="'@(_EstragoniaExistingUiHost)' != ''">true</_EstragoniaHasUiHost>
+			<_EstragoniaNeedAvaloniaControl Condition="'$(_EstragoniaHasAvaloniaControl)' != 'true'">true</_EstragoniaNeedAvaloniaControl>
+			<_EstragoniaNeedUiHost Condition="'$(_EstragoniaHasUiHost)' != 'true'">true</_EstragoniaNeedUiHost>
+			<_EstragoniaCopyAvaloniaControl Condition="'$(_EstragoniaShouldInject)' == 'true' AND '$(_EstragoniaNeedAvaloniaControl)' == 'true'">true</_EstragoniaCopyAvaloniaControl>
+			<_EstragoniaCopyUiHost Condition="'$(_EstragoniaShouldInject)' == 'true' AND '$(_EstragoniaNeedUiHost)' == 'true'">true</_EstragoniaCopyUiHost>
+			<_EstragoniaAvaloniaControlDest>$(_EstragoniaHostScriptsDir)AvaloniaControl.cs</_EstragoniaAvaloniaControlDest>
+			<_EstragoniaUiHostDest>$(_EstragoniaHostScriptsDir)UiHost.cs</_EstragoniaUiHostDest>
+			<_EstragoniaAvaloniaControlSrc>$(_EstragoniaHostScriptsSourceDir)AvaloniaControl.cs</_EstragoniaAvaloniaControlSrc>
+			<_EstragoniaUiHostSrc>$(_EstragoniaHostScriptsSourceDir)UiHost.cs</_EstragoniaUiHostSrc>
+		</PropertyGroup>
+
+		<Error
+			Condition="('$(_EstragoniaCopyAvaloniaControl)' == 'true' OR '$(_EstragoniaCopyUiHost)' == 'true') AND !Exists('$(_EstragoniaHostScriptsSourceDir)')"
+			Text="Estragonia host-scripts directory was not found: '$(_EstragoniaHostScriptsSourceDir)'. Reinstall Ouse.Estragonia or set EstragoniaHostScriptsSourceDir." />
+
+		<MakeDir
+			Directories="$(_EstragoniaHostScriptsDir)"
+			Condition="'$(_EstragoniaCopyAvaloniaControl)' == 'true' OR '$(_EstragoniaCopyUiHost)' == 'true'" />
+
+		<Copy
+			SourceFiles="$(_EstragoniaAvaloniaControlSrc)"
+			DestinationFiles="$(_EstragoniaAvaloniaControlDest)"
+			SkipUnchangedFiles="false"
+			Condition="'$(_EstragoniaCopyAvaloniaControl)' == 'true' AND Exists('$(_EstragoniaAvaloniaControlSrc)') AND !Exists('$(_EstragoniaAvaloniaControlDest)')" />
+
+		<Copy
+			SourceFiles="$(_EstragoniaUiHostSrc)"
+			DestinationFiles="$(_EstragoniaUiHostDest)"
+			SkipUnchangedFiles="false"
+			Condition="'$(_EstragoniaCopyUiHost)' == 'true' AND Exists('$(_EstragoniaUiHostSrc)') AND !Exists('$(_EstragoniaUiHostDest)')" />
+
+		<Error
+			Condition="'$(_EstragoniaCopyAvaloniaControl)' == 'true' AND !Exists('$(_EstragoniaAvaloniaControlDest)')"
+			Text="Estragonia failed to copy AvaloniaControl.cs to '$(_EstragoniaAvaloniaControlDest)'." />
+
+		<Error
+			Condition="'$(_EstragoniaCopyUiHost)' == 'true' AND !Exists('$(_EstragoniaUiHostDest)')"
+			Text="Estragonia failed to copy UiHost.cs to '$(_EstragoniaUiHostDest)'." />
+
+		<ItemGroup>
+			<Compile Include="$(_EstragoniaAvaloniaControlDest)" Condition="'$(_EstragoniaCopyAvaloniaControl)' == 'true' AND Exists('$(_EstragoniaAvaloniaControlDest)')" />
+			<Compile Include="$(_EstragoniaUiHostDest)" Condition="'$(_EstragoniaCopyUiHost)' == 'true' AND Exists('$(_EstragoniaUiHostDest)')" />
+		</ItemGroup>
+
+		<Warning
+			Code="ESTRAGONIA001"
+			Condition="'$(_EstragoniaCopyAvaloniaControl)' == 'true' OR '$(_EstragoniaCopyUiHost)' == 'true'"
+			Text="Estragonia inserted host script(s) into the Godot project. Reload Godot so it can generate .uid files. This warning is only raised when a file is actually copied." />
+
+		<Warning
+			Code="ESTRAGONIA002"
+			Condition="'$(_EstragoniaIsGodotProject)' == 'true' AND '$(_EstragoniaShouldInject)' != 'true' AND ('$(_EstragoniaNeedAvaloniaControl)' == 'true' OR '$(_EstragoniaNeedUiHost)' == 'true')"
+			Text="Estragonia host script(s) are missing from this Godot project. Enable insert with &lt;EstragoniaInjectHostScripts&gt;true&lt;/EstragoniaInjectHostScripts&gt;, or copy AvaloniaControl.cs / UiHost.cs from the Ouse.Estragonia package host-scripts/ folder." />
+
+	</Target>
+
+</Project>

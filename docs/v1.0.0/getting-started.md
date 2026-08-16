@@ -64,39 +64,23 @@ Already wired:
 
 ## Tutorial B — add the package to an existing Godot C# project
 
-NuGet alone is **not** enough. You must also copy the host scripts into the Godot project.
-
 ```bash
 dotnet add package Ouse.Estragonia
 dotnet add package Semi.Avalonia
+dotnet build
 ```
 
-### 1. Copy host scripts into your Godot project root
+`dotnet build` inserts `AvaloniaControl.cs` and `UiHost.cs` next to the csproj if they are missing (warning `ESTRAGONIA001` the first time). Reload Godot so it can generate `.uid` files.
 
-From this repo (or an installed template project), copy **both** files next to your `.csproj` / `project.godot`:
+The types still compile into **your Godot assembly**. Do not move them to a class library. To skip insert, set `EstragoniaInjectHostScripts` to `false` and copy the files yourself from the package `host-scripts/` folder.
 
-| File | Role |
-|------|------|
-| `AvaloniaControl.cs` | Godot `Control` that renders Avalonia |
-| `UiHost.cs` | Focus + `CreateRoot()` boilerplate |
-
-Sources:
-
-- `templates/estragonia-godot/AvaloniaControl.cs`
-- `templates/estragonia-godot/UiHost.cs`
-- or the same names under `samples/HelloWorld/`
-
-Keep the `JLeb.Estragonia` namespace inside those files (or adjust `UserInterface` accordingly).  
-**Class name must match file name.** Do not put these types only in a class library.
-
-### 2. Avalonia `Application` + theme
+### 1. Avalonia `Application` + theme
 
 Create `App.axaml` / `App.axaml.cs` with a theme (e.g. Semi).
 
-### 3. Autoload (once per run)
+### 2. Autoload (once per process)
 
 ```csharp
-using Avalonia;
 using Godot;
 using JLeb.Estragonia;
 
@@ -104,19 +88,19 @@ public partial class AvaloniaLoader : Node
 {
     public override void _Ready()
     {
-        AppBuilder.Configure<App>()
-            .UseGodot()
-            .SetupWithoutStarting();
+        if (Engine.IsEditorHint())
+            GodotAvalonia.EnsureStarted();
+        else
+            GodotAvalonia.EnsureStarted<App>();
 
-        GodotAvalonia.EnsureAssetLoader(typeof(App).Assembly);
         GetWindow()?.SetImeActive(true);
     }
 }
 ```
 
-Register it as an Autoload in `project.godot`.
+Register it as an Autoload in `project.godot`. `EnsureStarted` is a no-op if Avalonia is already running — do not `Shutdown` and start again.
 
-### 4. Scene host script
+### 3. Scene host script
 
 ```csharp
 using Avalonia.Controls;
@@ -138,7 +122,7 @@ See [Hosting UI](hosting.md) for the full file checklist.
 ## Sample in this repo
 
 Open `samples/HelloWorld` in Godot (uses a project reference to the library source).  
-That sample already contains `AvaloniaControl.cs` and `UiHost.cs`.
+That sample already contains `AvaloniaControl.cs` and `UiHost.cs`. Editor docks: set `HelloWorld.Editor.Preview` as the startup project for a desktop preview; in Godot, build `HelloWorld.Editor.Demo` / `HelloWorld.Editor.Log`, then see [Editor plugins](editor-plugins.md).
 
 ## Hot reload
 

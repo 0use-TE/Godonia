@@ -40,6 +40,7 @@ public static class GodotPlatform {
 		Avalonia.Threading.Dispatcher.InitializeUIThreadDispatcher(dispatcherImpl);
 
 		var platformGraphics = new GodotVkPlatformGraphics();
+		platformGraphics.AddRef(); // process lifetime: F5 / script reload must not destroy the shared Skia GPU
 		var renderTimer = new ManualRenderTimer();
 		var renderLoop = RenderLoop.FromTimer(renderTimer);
 

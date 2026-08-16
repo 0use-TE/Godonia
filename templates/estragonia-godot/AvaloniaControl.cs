@@ -1,3 +1,4 @@
+// Estragonia host script. Do not move to a class library. Package version: 1.1.0
 using Godot;
 using AvControl = Avalonia.Controls.Control;
 
@@ -56,6 +57,10 @@ public partial class AvaloniaControl : Control {
 		}
 	}
 
+	/// <summary>Whether the Avalonia top-level has been created.</summary>
+	public bool IsInitialized
+		=> _engine?.IsInitialized == true;
+
 	/// <summary>Gets the underlying Avalonia top-level element.</summary>
 	public GodotTopLevel GetTopLevel()
 		=> EngineOrThrow.GetTopLevel();
@@ -70,9 +75,40 @@ public partial class AvaloniaControl : Control {
 	private void EnsureEngine()
 		=> _engine ??= new AvaloniaControlEngine(this);
 
+	/// <summary>
+	/// Drops the Avalonia root but keeps this Godot node and the top-level so a new page can be assigned.
+	/// </summary>
+	public void Detach() {
+		if (_engine is null)
+			return;
+
+		_engine.Control = null;
+	}
+
 	public override void _Ready() {
 		EnsureEngine();
 		_engine!.Ready();
+	}
+
+	public override void _Notification(int what) {
+		// Prefer notifications over Control.Resized / MouseExited C# events.
+		// Those become dead ManagedCallables after editor assembly reload.
+		switch ((long) what) {
+			case NotificationResized:
+				_engine?.NotifyResized();
+				break;
+			case NotificationFocusEnter:
+				_engine?.NotifyFocusEntered();
+				break;
+			case NotificationFocusExit:
+				_engine?.NotifyFocusExited();
+				break;
+			case NotificationMouseExit:
+				_engine?.NotifyMouseExited();
+				break;
+		}
+
+		base._Notification(what);
 	}
 
 	public override void _Process(double delta)

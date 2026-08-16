@@ -39,7 +39,7 @@ The generated project references **`Ouse.Estragonia`** from nuget.org.
 Bridge namespaces remain **`JLeb.Estragonia`**.
 
 **Host scripts are part of the generated Godot project** (`AvaloniaControl.cs`, `UiHost.cs`).  
-They are not provided as Godot scripts by the NuGet library — see [docs/v1.0.0/hosting.md](../docs/v1.0.0/hosting.md).
+Referencing `Ouse.Estragonia` also inserts those two files on build if they are missing. See [docs/v1.0.0/hosting.md](../docs/v1.0.0/hosting.md).
 
 ## Solution layout
 
@@ -67,5 +67,5 @@ Solution 'MySolution'
 dotnet pack src/JLeb.Estragonia -c Release -o nupkgs
 dotnet pack templates/Ouse.Estragonia.Templates.csproj -c Release -o nupkgs
 dotnet new uninstall Ouse.Estragonia.Templates
-dotnet new install ./nupkgs/Ouse.Estragonia.Templates.1.0.0.nupkg
+dotnet new install ./nupkgs/Ouse.Estragonia.Templates.1.1.0.nupkg
 ```

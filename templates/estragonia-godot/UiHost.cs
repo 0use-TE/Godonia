@@ -1,3 +1,4 @@
+// Estragonia host script. Do not move to a class library. Package version: 1.1.0
 using Godot;
 using AvControl = Avalonia.Controls.Control;
 

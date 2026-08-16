@@ -12,9 +12,21 @@
 
 Godot’s C# editor hot-reload **does not support** Godot node types that live only in an external assembly (NuGet / `ProjectReference`). That is an engine limitation ([godot#111881](https://github.com/godotengine/godot/issues/111881), [godot#98094](https://github.com/godotengine/godot/issues/98094)).
 
-The NuGet package (`Ouse.Estragonia`) provides the platform bridge (`UseGodot`, Vulkan/Skia, `AvaloniaControlEngine`, …). It does **not** ship `AvaloniaControl` / `UiHost` as Godot node scripts — those two `.cs` files must be in your Godot project (template/sample already include them).
+The NuGet package (`Ouse.Estragonia`) provides the platform bridge (`UseGodot`, Vulkan/Skia, `AvaloniaControlEngine`, …). The two host `.cs` files **must still compile into the Godot project assembly** (class name = file name). They can come from:
 
-If you use the **template**, those two files are already included. If you add the package by hand, **copy them** from the template or sample into your project (class name = file name, one Godot class per file).
+1. The template / HelloWorld sample (already present)
+2. **Automatic insert** on `dotnet build` when the package is referenced and the files are missing
+3. A manual copy from `host-scripts/` in the package
+
+Inserted files are **project files** (commit them). Package upgrades **do not** overwrite them. If a host API changes, merge from `src/JLeb.Estragonia/host-scripts/` by hand.
+
+Opt out:
+
+```xml
+<EstragoniaInjectHostScripts>false</EstragoniaInjectHostScripts>
+```
+
+Extension libraries that only reference `Ouse.Estragonia` must **not** pack or inject these two files; the game Godot project gets them via a direct or transitive reference. After insert, reload Godot so it can generate `.uid` files.
 
 ## Split responsibilities
 
@@ -32,8 +44,8 @@ Do **not** call `GrabFocus` / `GetWindow` from Avalonia `App`.
 
 ```
 YourGodotProject/
-├── AvaloniaControl.cs   ← copy from template/sample (do not omit)
-├── UiHost.cs            ← copy from template/sample (do not omit)
+├── AvaloniaControl.cs   ← template, auto-insert, or copy (required)
+├── UiHost.cs            ← template, auto-insert, or copy (required)
 ├── AvaloniaLoader.cs    ← Autoload
 ├── UserInterface.cs     ← your host: CreateRoot()
 ├── App.axaml (+ .cs)
@@ -77,3 +89,5 @@ public partial class UserInterface : UiHost
 By default `AvaloniaControl.CaptureEmptyHits` is `false`: only Avalonia-hittable pixels capture the mouse; empty areas pass through to Godot (e.g. a `Sprite2D` behind the host).
 
 Set `CaptureEmptyHits = true` to capture the whole control rect.
+
+Editor docks (collectible plugin ALCs, no Avalonia restart) are documented in [Editor plugins](editor-plugins.md).

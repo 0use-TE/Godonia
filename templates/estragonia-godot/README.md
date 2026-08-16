@@ -14,7 +14,7 @@ Godot 4 + Avalonia starter from **[Ouse.Estragonia.Templates](https://www.nuget.
 Autoload `AvaloniaLoader` and the default `UserInterface` (`UiHost`) are already configured.
 
 **`AvaloniaControl.cs` and `UiHost.cs` must stay in this Godot project.**  
-They are not shipped as Godot scripts inside the `Ouse.Estragonia` NuGet package (Godot cannot hot-reload node types from external assemblies).
+`Ouse.Estragonia` can insert them on build if they are missing; they still compile into this assembly.
 
 ## Layout
 

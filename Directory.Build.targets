@@ -1,0 +1,6 @@
+<Project>
+
+	<Import Project="$(MSBuildThisFileDirectory)src\JLeb.Estragonia\build\Ouse.Estragonia.targets"
+		Condition="Exists('$(MSBuildThisFileDirectory)src\JLeb.Estragonia\build\Ouse.Estragonia.targets')" />
+
+</Project>

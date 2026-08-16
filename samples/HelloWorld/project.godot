@@ -27,6 +27,10 @@ AvaloniaLoader="res://AvaloniaLoader.cs"
 
 project/assembly_name="HelloWorld"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/estragonia_editor/plugin.cfg", "res://addons/estragonia_editor_log/plugin.cfg")
+
 [rendering]
 
 anti_aliasing/quality/screen_space_aa=1

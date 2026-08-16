@@ -1,0 +1,30 @@
+<Project>
+
+	<PropertyGroup>
+		<EstragoniaPluginOutputDir Condition="'$(EstragoniaPluginOutputDir)' == ''">$(MSBuildThisFileDirectory)HelloWorld\.godot\estragonia-plugins\</EstragoniaPluginOutputDir>
+	</PropertyGroup>
+
+	<!--
+		Always write a new timestamped file. Godot may still have the previous DLL mapped;
+		overwriting that path would fail. EditorPluginCatalog loads the newest matching copy from memory.
+	-->
+	<Target Name="CopyPluginToGodotCache" AfterTargets="Build">
+		<PropertyGroup>
+			<_PluginOut>$([MSBuild]::EnsureTrailingSlash('$(EstragoniaPluginOutputDir)'))</_PluginOut>
+			<_PluginStamp>$([System.DateTime]::UtcNow.Ticks)</_PluginStamp>
+			<_PluginShadow>$(_PluginOut)$(TargetName).$(_PluginStamp).dll</_PluginShadow>
+			<_PluginPdb Condition="Exists('$(TargetDir)$(TargetName).pdb')">$(TargetDir)$(TargetName).pdb</_PluginPdb>
+		</PropertyGroup>
+		<MakeDir Directories="$(_PluginOut)" />
+		<Copy
+			SourceFiles="$(TargetPath)"
+			DestinationFiles="$(_PluginShadow)"
+			SkipUnchangedFiles="false" />
+		<Copy
+			SourceFiles="$(_PluginPdb)"
+			DestinationFiles="$(_PluginOut)$(TargetName).$(_PluginStamp).pdb"
+			SkipUnchangedFiles="false"
+			Condition="'$(_PluginPdb)' != ''" />
+	</Target>
+
+</Project>

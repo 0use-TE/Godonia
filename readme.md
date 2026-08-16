@@ -69,8 +69,8 @@ dotnet restore
 
 模板已配置好：
 
-- Autoload：`AvaloniaLoader`（`UseGodot()` 只初始化一次）
-- **宿主脚本在 Godot 工程内**：`AvaloniaControl.cs`、`UiHost.cs`（不要指望 NuGet 自带）
+- Autoload：`AvaloniaLoader`（`EnsureStarted` / `UseGodot()` 只初始化一次）
+- **宿主脚本在 Godot 工程内**：`AvaloniaControl.cs`、`UiHost.cs`（手动加包时 `dotnet build` 也会在缺失时插入）
 - 默认宿主：`UserInterface`（`UiHost` + `Views` / `ViewModels`）
 - `Designer.cs`：供 Avalonia 预览器用（`Main` + `BuildAvaloniaApp`）
 
@@ -93,26 +93,16 @@ dotnet add package Ouse.Estragonia
 dotnet add package Semi.Avalonia
 # 可选 MVVM
 dotnet add package CommunityToolkit.Mvvm
+dotnet build
 ```
 
-**只加 NuGet 不够。** Godot 节点宿主必须是工程内的脚本文件：
+`dotnet build` 会在缺少 `AvaloniaControl.cs` / `UiHost.cs` 时插入到 Godot 工程（首次警告 `ESTRAGONIA001`）。类型仍编进游戏程序集。不想自动插入时设 `EstragoniaInjectHostScripts` 为 `false`。
 
-1. 从 `templates/estragonia-godot/`（或 `samples/HelloWorld/`）复制到你的 Godot 工程根目录：
-   - `AvaloniaControl.cs`
-   - `UiHost.cs`
-2. 增加 Avalonia `Application`（含主题）。
-3. Autoload 里调用一次：
+然后：
 
-```csharp
-AppBuilder.Configure<App>()
-    .UseGodot()
-    .SetupWithoutStarting();
-
-GodotAvalonia.EnsureAssetLoader(typeof(App).Assembly);
-GetWindow()?.SetImeActive(true);
-```
-
-4. 场景里挂一个 `Control`，脚本继承工程内的 `UiHost`，实现 `CreateRoot()`。
+1. 增加 Avalonia `Application`（含主题）。
+2. Autoload 里调用一次 `GodotAvalonia.EnsureStarted<App>()`（编辑器里用无类型参数的 `EnsureStarted()`）。
+3. 场景里挂一个 `Control`，脚本继承工程内的 `UiHost`，实现 `CreateRoot()`。
 
 详见 [docs/v1.0.0/zh-CN/hosting.md](docs/v1.0.0/zh-CN/hosting.md)（含「宿主必须在 Godot 工程内」说明）。
 
@@ -126,9 +116,10 @@ GetWindow()?.SetImeActive(true);
 ## 仓库结构
 
 ```
-src/JLeb.Estragonia/   # 桥接库（NuGet: Ouse.Estragonia）——不含 AvaloniaControl/UiHost
+src/JLeb.Estragonia/   # 桥接库（NuGet: Ouse.Estragonia）+ host-scripts 插入
 templates/             # dotnet new 模板（含宿主脚本；NuGet: Ouse.Estragonia.Templates）
-samples/HelloWorld/    # 示例（含 AvaloniaControl.cs / UiHost.cs）
+samples/HelloWorld/    # 示例（含 AvaloniaControl.cs / UiHost.cs 与编辑器 Dock）
+samples/HelloWorld.Editor.*  # 编辑器插件 View（独立工程，不引用进 Godot 主工程）
 docs/v1.0.0/           # 手写文档（英 / 中）
 ```
 

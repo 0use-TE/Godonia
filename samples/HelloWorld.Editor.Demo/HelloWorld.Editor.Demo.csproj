@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="..\Estragonia.EditorPlugin.props" />
+
+	<PropertyGroup>
+		<AssemblyName>HelloWorld.Editor.Demo</AssemblyName>
+		<RootNamespace>HelloWorld.Editor.Demo</RootNamespace>
+	</PropertyGroup>
+
+	<Import Project="..\Estragonia.EditorPlugin.targets" />
+
+</Project>
