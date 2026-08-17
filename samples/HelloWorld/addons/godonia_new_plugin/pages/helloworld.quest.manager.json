@@ -1,0 +1,8 @@
+{
+	"id": "helloworld.quest.manager",
+	"assembly": ".godot/godonia-plugins/HelloWorld.Editor.QuestManager.dll",
+	"pageType": "HelloWorld.Editor.QuestManager.QuestManagerPage",
+	"title": "Quest Manager",
+	"dockSlot": "Bottom",
+	"hostName": "GodoniaQuestManagerHost"
+}

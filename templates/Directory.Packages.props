@@ -1,6 +1,0 @@
-<Project>
-	<!-- Isolate template pack from repo CPM -->
-	<PropertyGroup>
-		<ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
-	</PropertyGroup>
-</Project>

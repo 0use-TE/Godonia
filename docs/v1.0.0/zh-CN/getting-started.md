@@ -1,88 +1,93 @@
 # 快速开始
 
-## 链接
+## 标识
 
-| | URL |
-|--|-----|
-| 库 | [Ouse.Estragonia](https://www.nuget.org/packages/Ouse.Estragonia/) |
-| 模板 | [Ouse.Estragonia.Templates](https://www.nuget.org/packages/Ouse.Estragonia.Templates/) |
-| 源码 | [0use-TE/Estragonia](https://github.com/0use-TE/Estragonia) |
+| | |
+|--|--|
+| 产品名 | **Godonia** |
+| 包名 / 命名空间 | **`Ouse.Godonia`** |
+| 包版本 | **1.0.0** |
+| 包源 | 编辑器本地：`GodotSharp/Godonia/nupkg`（默认不走 nuget.org） |
 
-NuGet 包名是 **`Ouse.Estragonia`**；桥接命名空间仍是 **`JLeb.Estragonia`**。
+> **含 AI 辅助代码，不保证稳定性**，请自行测试后再用于正式环境。  
+> 基于 Julien Lebosquain 的 [Estragonia](https://github.com/MrJul/Estragonia)（MIT）。
 
 ## 环境
 
-- Godot **4.7+**（.NET），渲染器 **Forward+** 或 **Mobile**（Vulkan）
+- **Godonia 自定义 Godot 编辑器**（本仓库：`godot/bin/godot.windows.editor.x86_64.mono.exe`）
+- 渲染器 **Forward+** 或 **Mobile**（Vulkan）
 - .NET SDK **10**
 - Avalonia **12**
 
 ---
 
-## 教程 A — 用模板创建（推荐）
+## 教程 A — 用 Godonia 编辑器新建工程（推荐）
 
-### 1. 安装模板
+### 1. 启动自定义编辑器
 
-```bash
-dotnet new install Ouse.Estragonia.Templates
+```text
+godot/bin/godot.windows.editor.x86_64.mono.exe
 ```
 
-### 2. 创建项目
+exe 旁应有：
 
-```bash
-dotnet new estragonia -n MySolution --GodotProjectName MyGame -o MySolution
-cd MySolution
-dotnet restore
+```text
+GodotSharp/Godonia/
+  runtime/          Ouse.Godonia.dll（编辑器宿主）
+  nupkg/            Ouse.Godonia.1.0.0.nupkg
+  project-template/ 新建工程时复制的 Avalonia 模板
 ```
 
-| 参数 | 含义 |
-|------|------|
-| `-n` / `--name` | 解决方案名 |
-| `--GodotProjectName` | Godot / C# 项目名（合法 C# 标识符） |
-| `-o` | 输出目录 |
+刷新这些目录：
 
-Visual Studio：新建项目 → 搜 **Estragonia Godot App**（装完模板后若没有，请重启 VS）。
+```powershell
+.\scripts\deploy-godonia-editor.ps1
+```
 
-### 3. 用 Godot 打开
+### 2. 新建项目
 
-用 Godot 4.7+（.NET）打开根目录的 **`project.godot`**。  
-不要打开 `.godot/` 缓存目录。
+在项目管理器中新建 **Godot C# 项目**。编辑器会安装 Godonia Avalonia 模板（含 `.slnx`、游戏工程、`{Game}.Editor.Preview` 的嵌套工作区）。
 
 模板已配置：
 
-- Autoload `AvaloniaLoader` → 只初始化一次 `UseGodot()`
+- Autoload `AvaloniaLoader` → 只初始化一次 `EnsureStarted` / `UseGodot()`
 - **工程内已带 `AvaloniaControl.cs` + `UiHost.cs`**（必需宿主脚本）
-- `UserInterface` : `UiHost` → `CreateRoot()`
-- `Designer.cs` 供 Avalonia 预览（`Main` + `BuildAvaloniaApp`）
+- `UserInterface : UiHost` → `CreateRoot()`
+- `nuget.config` 指向编辑器本地 `Godonia/nupkg`
+- `{Game}.Editor.Preview` 供 Avalonia 桌面设计器 / F5 预览编辑器页面
 
-### 4. 改 UI
+### 3. 改游戏 UI
 
 - 视图：`Views/MainView.axaml`
 - 视图模型：`ViewModels/MainViewModel.cs`
 - 主题：`App.axaml`
 
+用**同一份**自定义编辑器打开 `project.godot`。不要打开 `.godot/` 缓存目录。
+
 ---
 
 ## 教程 B — 给已有 Godot C# 工程加包
 
+先把 NuGet 源指到编辑器旁的 nupkg 目录（绝对路径），再：
+
 ```bash
-dotnet add package Ouse.Estragonia
-dotnet add package Semi.Avalonia
+dotnet add package Ouse.Godonia --version 1.0.0
 dotnet build
 ```
 
-`dotnet build` 会在缺少 `AvaloniaControl.cs` / `UiHost.cs` 时插入到 csproj 旁边（首次警告 `ESTRAGONIA001`）。请重载 Godot 以生成 `.uid`。
+`dotnet build` 会在缺少 `AvaloniaControl.cs` / `UiHost.cs` 时插入到 csproj 旁边（首次警告 `GODONIA001`）。请重载 Godot 以生成 `.uid`。
 
-类型仍编进 **你的 Godot 程序集**。不要把它们挪到类库。若不想自动插入：设 `EstragoniaInjectHostScripts` 为 `false`，再从包内 `host-scripts/` 手拷。
+类型仍编进 **你的 Godot 程序集**。不要把它们挪到类库。若不想自动插入：设 `GodoniaInjectHostScripts` 为 `false`，再从包内 `host-scripts/` 手拷。
 
 ### 1. Avalonia `Application` + 主题
 
-准备 `App.axaml` / `App.axaml.cs`（如 Semi）。
+准备 `App.axaml` / `App.axaml.cs`（如 Semi 或 Fluent）。
 
 ### 2. Autoload（整个进程只启动一次）
 
 ```csharp
 using Godot;
-using JLeb.Estragonia;
+using Ouse.Godonia;
 
 public partial class AvaloniaLoader : Node
 {
@@ -104,7 +109,7 @@ public partial class AvaloniaLoader : Node
 
 ```csharp
 using Avalonia.Controls;
-using JLeb.Estragonia;
+using Ouse.Godonia;
 
 public partial class UserInterface : UiHost
 {
@@ -121,8 +126,8 @@ public partial class UserInterface : UiHost
 
 ## 本仓库示例
 
-用 Godot 打开 `samples/HelloWorld`（通过工程引用本地库源码）。  
-示例里已经包含 `AvaloniaControl.cs` 和 `UiHost.cs`。编辑器 Dock：把解决方案启动项目设为 `HelloWorld.Editor.Preview` 可桌面预览；Godot 里先编译 `HelloWorld.Editor.Demo` / `Log`，见 [编辑器插件](editor-plugins.md)。
+用 Godonia 编辑器打开 `samples/HelloWorld`（通过工程引用本地库源码）。  
+示例里已经包含 `AvaloniaControl.cs`、`UiHost.cs`，以及 `godonia_new_plugin` 下三个编辑器页面：**技能树**（左侧）、**任务管理**（底部）、**世界管理**（MainScreen）。把 `HelloWorld.Editor.Preview` 设为启动项目可桌面页签预览；详见 [编辑器插件](editor-plugins.md)。
 
 ## 热重载
 

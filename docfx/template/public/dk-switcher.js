@@ -3,6 +3,7 @@
 	const docPages = new Set([
 		'getting-started',
 		'hosting',
+		'editor-plugins',
 		'input-and-rendering',
 		'ai-prompt',
 		'release-notes',

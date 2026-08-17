@@ -1,88 +1,93 @@
 # Getting started
 
-## Links
+## Identity
 
-| | URL |
-|--|-----|
-| Library | [Ouse.Estragonia](https://www.nuget.org/packages/Ouse.Estragonia/) |
-| Template | [Ouse.Estragonia.Templates](https://www.nuget.org/packages/Ouse.Estragonia.Templates/) |
-| Source | [0use-TE/Estragonia](https://github.com/0use-TE/Estragonia) |
+| | |
+|--|--|
+| Product | **Godonia** |
+| Package / namespace | **`Ouse.Godonia`** |
+| Package version | **1.0.0** |
+| Package feed | Editor-local: `GodotSharp/Godonia/nupkg` (not nuget.org) |
 
-Package id is **`Ouse.Estragonia`**; bridge namespaces remain **`JLeb.Estragonia`**.
+> **AI-assisted codebase.** Stability is **not** guaranteed. Test before shipping.  
+> Based on [Estragonia](https://github.com/MrJul/Estragonia) by Julien Lebosquain (MIT).
 
 ## Requirements
 
-- Godot **4.7+** (.NET build), renderer **Forward+** or **Mobile** (Vulkan)
+- **Godonia custom Godot editor** (this repo: `godot/bin/godot.windows.editor.x86_64.mono.exe`)
+- Renderer **Forward+** or **Mobile** (Vulkan)
 - .NET SDK **10**
 - Avalonia **12**
 
 ---
 
-## Tutorial A — `dotnet new` template (recommended)
+## Tutorial A — New project in the Godonia editor (recommended)
 
-### 1. Install the template
+### 1. Run the custom editor
 
-```bash
-dotnet new install Ouse.Estragonia.Templates
+```text
+godot/bin/godot.windows.editor.x86_64.mono.exe
+```
+
+Next to the exe you should have:
+
+```text
+GodotSharp/Godonia/
+  runtime/          Ouse.Godonia.dll (editor host)
+  nupkg/            Ouse.Godonia.1.0.0.nupkg
+  project-template/ Avalonia starter copied into new projects
+```
+
+Rebuild / refresh those folders with:
+
+```powershell
+.\scripts\deploy-godonia-editor.ps1
 ```
 
 ### 2. Create a project
 
-```bash
-dotnet new estragonia -n MySolution --GodotProjectName MyGame -o MySolution
-cd MySolution
-dotnet restore
-```
-
-| Flag | Meaning |
-|------|---------|
-| `-n` / `--name` | Solution name |
-| `--GodotProjectName` | Godot / C# project name (valid C# identifier) |
-| `-o` | Output folder |
-
-Visual Studio: **Create a new project** → **Estragonia Godot App** (restart VS after installing the template).
-
-### 3. Open in Godot
-
-Open **`project.godot`** at the solution root with Godot 4.7+ (.NET).  
-Do **not** open the `.godot/` cache folder.
+In the Project Manager, create a **new Godot C# project**. The editor installs the Godonia Avalonia template (nested workspace with `.slnx`, game project, and `{Game}.Editor.Preview`).
 
 Already wired:
 
-- Autoload `AvaloniaLoader` → `UseGodot()` once
+- Autoload `AvaloniaLoader` → `GodotAvalonia.EnsureStarted` / `UseGodot()` once
 - **`AvaloniaControl.cs` + `UiHost.cs` in the Godot project** (required host scripts)
-- `UserInterface` : `UiHost` → `CreateRoot()`
-- `Designer.cs` for Avalonia XAML preview (`Main` + `BuildAvaloniaApp`)
+- `UserInterface : UiHost` → `CreateRoot()`
+- `nuget.config` pointing at the editor-local `Godonia/nupkg` feed
+- `{Game}.Editor.Preview` for Avalonia desktop designer / F5 preview of editor pages
 
-### 4. Edit the UI
+### 3. Edit the game UI
 
 - View: `Views/MainView.axaml`
 - ViewModel: `ViewModels/MainViewModel.cs`
 - Theme: `App.axaml`
 
+Open `project.godot` with the **same** custom editor. Do **not** open the `.godot/` cache folder.
+
 ---
 
 ## Tutorial B — add the package to an existing Godot C# project
 
+Point NuGet at the editor nupkg folder (absolute path), then:
+
 ```bash
-dotnet add package Ouse.Estragonia
-dotnet add package Semi.Avalonia
+dotnet add package Ouse.Godonia --version 1.0.0
 dotnet build
 ```
 
-`dotnet build` inserts `AvaloniaControl.cs` and `UiHost.cs` next to the csproj if they are missing (warning `ESTRAGONIA001` the first time). Reload Godot so it can generate `.uid` files.
+`dotnet build` inserts `AvaloniaControl.cs` and `UiHost.cs` next to the csproj if they are missing (warning `GODONIA001` the first time). Reload Godot so it can generate `.uid` files.
 
-The types still compile into **your Godot assembly**. Do not move them to a class library. To skip insert, set `EstragoniaInjectHostScripts` to `false` and copy the files yourself from the package `host-scripts/` folder.
+The types still compile into **your Godot assembly**. Do not move them to a class library. To skip insert, set `GodoniaInjectHostScripts` to `false` and copy the files yourself from the package `host-scripts/` folder.
 
 ### 1. Avalonia `Application` + theme
 
-Create `App.axaml` / `App.axaml.cs` with a theme (e.g. Semi).
+Create `App.axaml` / `App.axaml.cs` with a theme (e.g. Semi or Fluent).
 
 ### 2. Autoload (once per process)
 
 ```csharp
 using Godot;
-using JLeb.Estragonia;
+using Ouse.Godonia;
 
 public partial class AvaloniaLoader : Node
 {
@@ -104,7 +109,7 @@ Register it as an Autoload in `project.godot`. `EnsureStarted` is a no-op if Ava
 
 ```csharp
 using Avalonia.Controls;
-using JLeb.Estragonia;
+using Ouse.Godonia;
 
 public partial class UserInterface : UiHost
 {
@@ -121,12 +126,12 @@ See [Hosting UI](hosting.md) for the full file checklist.
 
 ## Sample in this repo
 
-Open `samples/HelloWorld` in Godot (uses a project reference to the library source).  
-That sample already contains `AvaloniaControl.cs` and `UiHost.cs`. Editor docks: set `HelloWorld.Editor.Preview` as the startup project for a desktop preview; in Godot, build `HelloWorld.Editor.Demo` / `HelloWorld.Editor.Log`, then see [Editor plugins](editor-plugins.md).
+Open `samples/HelloWorld` in the Godonia editor (project reference to the library source).  
+That sample already contains `AvaloniaControl.cs` and `UiHost.cs`, plus `godonia_new_plugin` with three editor pages: **Skill Tree** (left), **Quest Manager** (bottom), **World Manager** (MainScreen). Set `HelloWorld.Editor.Preview` as the startup project for a desktop tab preview; see [Editor plugins](editor-plugins.md).
 
 ## Hot reload
 
-`AvaloniaControl` / `UiHost` now live in the Godot project so Godot can reload them as normal scripts.
+`AvaloniaControl` / `UiHost` live in the Godot project so Godot can reload them as normal scripts.
 
 You may still see **Failed to unload assemblies** when Avalonia (or other libraries) keep references across rebuilds. If the editor gets stuck: fully restart Godot; if needed, delete `.godot` and reopen.
 

@@ -1,0 +1,3 @@
+<Project>
+	<!-- Stop MSBuild from importing the Godonia repo Directory.Build.props / CPM. -->
+</Project>

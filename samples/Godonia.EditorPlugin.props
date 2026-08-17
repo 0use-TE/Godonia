@@ -1,0 +1,18 @@
+﻿<Project>
+
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<GodoniaInjectHostScripts>false</GodoniaInjectHostScripts>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<_GodoniaProjectPath>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)..\src\Ouse.Godonia\Ouse.Godonia.csproj'))</_GodoniaProjectPath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="$(_GodoniaProjectPath)" Condition="Exists('$(_GodoniaProjectPath)')" />
+		<PackageReference Include="Ouse.Godonia" Condition="!Exists('$(_GodoniaProjectPath)')" />
+	</ItemGroup>
+
+</Project>

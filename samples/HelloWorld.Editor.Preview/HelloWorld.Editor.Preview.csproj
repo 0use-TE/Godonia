@@ -7,14 +7,15 @@
 		<RootNamespace>HelloWorld.Editor.Preview</RootNamespace>
 		<IsPackable>false</IsPackable>
 		<AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-		<EstragoniaInjectHostScripts>false</EstragoniaInjectHostScripts>
+		<GodoniaInjectHostScripts>false</GodoniaInjectHostScripts>
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\HelloWorld.Editor.Demo\HelloWorld.Editor.Demo.csproj" />
-		<ProjectReference Include="..\HelloWorld.Editor.Log\HelloWorld.Editor.Log.csproj" />
+		<ProjectReference Include="..\HelloWorld.Editor.SkillTree\HelloWorld.Editor.SkillTree.csproj" />
+		<ProjectReference Include="..\HelloWorld.Editor.QuestManager\HelloWorld.Editor.QuestManager.csproj" />
+		<ProjectReference Include="..\HelloWorld.Editor.WorldManager\HelloWorld.Editor.WorldManager.csproj" />
 		<PackageReference Include="Avalonia.Desktop" />
 		<PackageReference Include="Avalonia.Themes.Fluent" />
 	</ItemGroup>

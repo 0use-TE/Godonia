@@ -1,27 +1,32 @@
+using Avalonia;
 using Avalonia.Controls;
-using HelloWorld.Editor.Demo;
-using HelloWorld.Editor.Log;
+using Avalonia.Layout;
+using Avalonia.Media;
+using HelloWorld.Editor.QuestManager;
+using HelloWorld.Editor.SkillTree;
+using HelloWorld.Editor.WorldManager;
 
 namespace HelloWorld.Editor.Preview;
 
+/// <summary>
+/// Desktop host for Avalonia designer + quick F5 tab preview of sample docks.
+/// </summary>
 public sealed class MainWindow : Window {
 
 	public MainWindow() {
-		Title = "Estragonia editor preview";
-		Width = 760;
-		Height = 540;
-		Content = new TabControl {
-			ItemsSource = new[] {
-				new TabItem {
-					Header = "Demo",
-					Content = new DemoPage().Create()
-				},
-				new TabItem {
-					Header = "Log",
-					Content = new LogPage().Create()
-				}
+		Title = "Godonia HelloWorld — editor preview";
+		Width = 960;
+		Height = 640;
+
+		var tabs = new TabControl {
+			Items = {
+				new TabItem { Header = "Skill Tree (Left)", Content = new SkillTreeView() },
+				new TabItem { Header = "Quest Manager (Bottom)", Content = new QuestManagerView() },
+				new TabItem { Header = "World Manager (MainScreen)", Content = new WorldManagerView() }
 			}
 		};
+
+		Content = tabs;
 	}
 
 }

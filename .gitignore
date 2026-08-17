@@ -26,10 +26,6 @@ api/
 _site/
 docs/**/obj/
 *.log
-!samples/HelloWorld.Editor.Log/
-!samples/HelloWorld.Editor.Log/**
-samples/HelloWorld.Editor.Log/bin/
-samples/HelloWorld.Editor.Log/obj/
 
 ## Local / temp
 _reflect/
@@ -38,6 +34,15 @@ _reflect.cs
 *.tmp
 nupkgs/
 _template_test/
+
+## Godot engine checkout (source in /godot; do not commit build output)
+godot/bin/
+godot/.sconsign.dblite
+godot/.sconsign-godot.dblite
+godot/.sconsign5.dblite
+godot/.scons_cache/
+godot/.scons_env.json
+godot/.scons_node_count
 
 ## OS
 Thumbs.db

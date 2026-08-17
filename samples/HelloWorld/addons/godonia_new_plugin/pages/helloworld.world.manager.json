@@ -1,0 +1,8 @@
+{
+	"id": "helloworld.world.manager",
+	"assembly": ".godot/godonia-plugins/HelloWorld.Editor.WorldManager.dll",
+	"pageType": "HelloWorld.Editor.WorldManager.WorldManagerPage",
+	"title": "World Manager",
+	"dockSlot": "MainScreen",
+	"hostName": "GodoniaWorldManagerHost"
+}

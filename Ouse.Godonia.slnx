@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Samples/">
+    <Project Path="samples/HelloWorld/HelloWorld.csproj" />
+    <Project Path="samples/HelloWorld.Editor.SkillTree/HelloWorld.Editor.SkillTree.csproj" />
+    <Project Path="samples/HelloWorld.Editor.QuestManager/HelloWorld.Editor.QuestManager.csproj" />
+    <Project Path="samples/HelloWorld.Editor.WorldManager/HelloWorld.Editor.WorldManager.csproj" />
+    <Project Path="samples/HelloWorld.Editor.Preview/HelloWorld.Editor.Preview.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Ouse.Godonia/Ouse.Godonia.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/Godonia.Build.Tests/Godonia.Build.Tests.csproj" />
+  </Folder>
+</Solution>

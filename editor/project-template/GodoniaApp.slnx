@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="GodotGame/project.godot" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="GodotGame/GodotGame.csproj" />
+  <Project Path="GodotGame.Editor.Preview/GodotGame.Editor.Preview.csproj" />
+</Solution>

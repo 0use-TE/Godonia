@@ -7,26 +7,26 @@
 | Location | OK? |
 |----------|-----|
 | Your Godot project (`res://AvaloniaControl.cs`, `res://UiHost.cs`, …) | Yes |
-| Copied from `templates/estragonia-godot` or `samples/HelloWorld` | Yes |
-| Only referencing `Ouse.Estragonia` NuGet / library assembly | **No** |
+| Copied from `editor/project-template` or `samples/HelloWorld` | Yes |
+| Only referencing `Ouse.Godonia` NuGet / library assembly | **No** |
 
 Godot’s C# editor hot-reload **does not support** Godot node types that live only in an external assembly (NuGet / `ProjectReference`). That is an engine limitation ([godot#111881](https://github.com/godotengine/godot/issues/111881), [godot#98094](https://github.com/godotengine/godot/issues/98094)).
 
-The NuGet package (`Ouse.Estragonia`) provides the platform bridge (`UseGodot`, Vulkan/Skia, `AvaloniaControlEngine`, …). The two host `.cs` files **must still compile into the Godot project assembly** (class name = file name). They can come from:
+The NuGet package (`Ouse.Godonia`) provides the platform bridge (`UseGodot`, Vulkan/Skia, `AvaloniaControlEngine`, …). The two host `.cs` files **must still compile into the Godot project assembly** (class name = file name). They can come from:
 
-1. The template / HelloWorld sample (already present)
+1. The editor project template / HelloWorld sample (already present)
 2. **Automatic insert** on `dotnet build` when the package is referenced and the files are missing
 3. A manual copy from `host-scripts/` in the package
 
-Inserted files are **project files** (commit them). Package upgrades **do not** overwrite them. If a host API changes, merge from `src/JLeb.Estragonia/host-scripts/` by hand.
+Inserted files are **project files** (commit them). Package upgrades **do not** overwrite them. If a host API changes, merge from `src/Ouse.Godonia/host-scripts/` by hand.
 
 Opt out:
 
 ```xml
-<EstragoniaInjectHostScripts>false</EstragoniaInjectHostScripts>
+<GodoniaInjectHostScripts>false</GodoniaInjectHostScripts>
 ```
 
-Extension libraries that only reference `Ouse.Estragonia` must **not** pack or inject these two files; the game Godot project gets them via a direct or transitive reference. After insert, reload Godot so it can generate `.uid` files.
+Extension libraries that only reference `Ouse.Godonia` must **not** pack or inject these two files; the game Godot project gets them via a direct or transitive reference. After insert, reload Godot so it can generate `.uid` files.
 
 ## Split responsibilities
 
@@ -52,11 +52,11 @@ YourGodotProject/
 └── Views/ …
 ```
 
-## UiHost
+## Minimal runnable example
 
 ```csharp
 // UiHost.cs — must be in the Godot project
-namespace JLeb.Estragonia;
+namespace Ouse.Godonia;
 
 public abstract partial class UiHost : AvaloniaControl
 {
@@ -75,7 +75,7 @@ public abstract partial class UiHost : AvaloniaControl
 
 ```csharp
 // UserInterface.cs — your scene script
-using JLeb.Estragonia;
+using Ouse.Godonia;
 
 public partial class UserInterface : UiHost
 {
@@ -90,4 +90,4 @@ By default `AvaloniaControl.CaptureEmptyHits` is `false`: only Avalonia-hittable
 
 Set `CaptureEmptyHits = true` to capture the whole control rect.
 
-Editor docks (collectible plugin ALCs, no Avalonia restart) are documented in [Editor plugins](editor-plugins.md).
+Editor docks / MainScreen pages (collectible plugin ALCs, no Avalonia restart) are documented in [Editor plugins](editor-plugins.md).

@@ -1,5 +1,0 @@
-{
-	"id": "estragonia.demo",
-	"assembly": ".godot/estragonia-plugins/HelloWorld.Editor.Demo.dll",
-	"pageType": "HelloWorld.Editor.Demo.DemoPage"
-}

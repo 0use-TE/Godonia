@@ -1,0 +1,9 @@
+<Project>
+
+	<PropertyGroup>
+		<GodoniaHostScriptsDir Condition="'$(GodoniaHostScriptsDir)' == ''">$(MSBuildProjectDirectory)\UI</GodoniaHostScriptsDir>
+		<GodoniaHostScriptsSourceDir Condition="'$(GodoniaHostScriptsSourceDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\host-scripts'))</GodoniaHostScriptsSourceDir>
+		<GodoniaEditorAddonSourceDir Condition="'$(GodoniaEditorAddonSourceDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\editor-addon'))</GodoniaEditorAddonSourceDir>
+	</PropertyGroup>
+
+</Project>

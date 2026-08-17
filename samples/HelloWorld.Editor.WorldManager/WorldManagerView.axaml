@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:vm="using:HelloWorld.Editor.WorldManager"
+	mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="560"
+	x:Class="HelloWorld.Editor.WorldManager.WorldManagerView"
+	x:DataType="vm:WorldManagerViewModel">
+	<Grid ColumnDefinitions="240,*" Margin="16" RowDefinitions="Auto,*">
+		<TextBlock Grid.ColumnSpan="2" Text="{Binding Title}" FontSize="22" FontWeight="SemiBold" Margin="0,0,0,12" />
+		<Border Grid.Row="1" Grid.Column="0" Padding="12" Margin="0,0,12,0" CornerRadius="10" Background="#18FFFFFF">
+			<DockPanel>
+				<StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,12">
+					<TextBlock Text="Regions" FontWeight="SemiBold" />
+					<TextBlock Text="{Binding Status}" Opacity="0.8" TextWrapping="Wrap" FontSize="12" />
+					<Button Content="Mark dirty" Command="{Binding MarkDirtyCommand}" HorizontalAlignment="Stretch" />
+					<Button Content="Bake lighting" Command="{Binding BakeCommand}" HorizontalAlignment="Stretch" />
+				</StackPanel>
+				<ListBox ItemsSource="{Binding Regions}" SelectedItem="{Binding SelectedRegion}">
+					<ListBox.ItemTemplate>
+						<DataTemplate x:DataType="vm:WorldRegion">
+							<StackPanel Spacing="2" Margin="4">
+								<TextBlock Text="{Binding Name}" FontWeight="Medium" />
+								<TextBlock Text="{Binding Summary}" FontSize="11" Opacity="0.75" />
+							</StackPanel>
+						</DataTemplate>
+					</ListBox.ItemTemplate>
+				</ListBox>
+			</DockPanel>
+		</Border>
+		<Border Grid.Row="1" Grid.Column="1" Padding="16" CornerRadius="10" Background="#12FFFFFF">
+			<StackPanel Spacing="10" IsVisible="{Binding SelectedRegion, Converter={x:Static ObjectConverters.IsNotNull}}">
+				<TextBlock Text="{Binding SelectedRegion.Name}" FontSize="20" FontWeight="SemiBold" />
+				<TextBlock Text="{Binding SelectedRegion.Biome}" Opacity="0.85" />
+				<Separator />
+				<TextBlock Text="Streaming" FontWeight="SemiBold" />
+				<Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="12">
+					<TextBlock Text="Chunk size" VerticalAlignment="Center" />
+					<Slider Grid.Column="1" Minimum="16" Maximum="128" TickFrequency="16" IsSnapToTickEnabled="True"
+						Value="{Binding SelectedRegion.ChunkSize}" />
+					<TextBlock Grid.Row="1" Text="LOD bias" VerticalAlignment="Center" />
+					<Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="4" TickFrequency="0.5"
+						Value="{Binding SelectedRegion.LodBias}" />
+					<TextBlock Grid.Row="2" Text="Spawn budget" VerticalAlignment="Center" />
+					<NumericUpDown Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="500"
+						Value="{Binding SelectedRegion.SpawnBudget}" />
+				</Grid>
+				<TextBlock Text="{Binding DetailText}" Margin="0,8,0,0" Opacity="0.9" TextWrapping="Wrap" />
+			</StackPanel>
+		</Border>
+	</Grid>
+</UserControl>

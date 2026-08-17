@@ -3,7 +3,7 @@
     {
       "src": [
         {
-          "files": [ "src/JLeb.Estragonia/JLeb.Estragonia.csproj" ]
+          "files": [ "src/Ouse.Godonia/Ouse.Godonia.csproj" ]
         }
       ],
       "dest": "api",
@@ -36,8 +36,8 @@
     "output": "_site",
     "template": [ "default", "modern", "docfx/template" ],
     "globalMetadata": {
-      "_appTitle": "Estragonia",
-      "_appName": "Estragonia",
+      "_appTitle": "Godonia",
+      "_appName": "Godonia",
       "_appFooter": "Based on Estragonia by Julien Lebosquain (MIT). AI-assisted fork — stability not guaranteed.",
       "_enableSearch": true,
       "_appBasePath": "",

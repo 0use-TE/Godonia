@@ -9,6 +9,7 @@ internal static class Program {
 	public static void Main(string[] args)
 		=> BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
 
+	// Avalonia designer / VS previewer entry point
 	public static AppBuilder BuildAvaloniaApp()
 		=> AppBuilder
 			.Configure<App>()

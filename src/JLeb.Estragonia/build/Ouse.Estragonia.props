@@ -1,8 +1,0 @@
-<Project>
-
-	<PropertyGroup>
-		<EstragoniaHostScriptsDir Condition="'$(EstragoniaHostScriptsDir)' == ''">$(MSBuildProjectDirectory)</EstragoniaHostScriptsDir>
-		<EstragoniaHostScriptsSourceDir Condition="'$(EstragoniaHostScriptsSourceDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\host-scripts'))</EstragoniaHostScriptsSourceDir>
-	</PropertyGroup>
-
-</Project>

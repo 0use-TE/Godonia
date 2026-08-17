@@ -1,0 +1,8 @@
+{
+	"id": "helloworld.skill.tree",
+	"assembly": ".godot/godonia-plugins/HelloWorld.Editor.SkillTree.dll",
+	"pageType": "HelloWorld.Editor.SkillTree.SkillTreePage",
+	"title": "Skill Tree",
+	"dockSlot": "LeftUl",
+	"hostName": "GodoniaSkillTreeHost"
+}

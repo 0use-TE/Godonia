@@ -1,0 +1,112 @@
+<Project>
+
+	<!--
+		Inserts AvaloniaControl.cs / UiHost.cs into Godot C# projects that do not already have them.
+		Never overwrites an existing file (any directory under the project).
+		Does not run for ordinary class libraries, this package, or template pack projects.
+	-->
+	<Target Name="GodoniaInjectHostScripts" BeforeTargets="BeforeCompile">
+
+		<PropertyGroup>
+			<_GodoniaHostScriptsSourceDir>$([MSBuild]::EnsureTrailingSlash('$(GodoniaHostScriptsSourceDir)'))</_GodoniaHostScriptsSourceDir>
+			<_GodoniaHostScriptsDir>$([MSBuild]::EnsureTrailingSlash('$(GodoniaHostScriptsDir)'))</_GodoniaHostScriptsDir>
+			<_GodoniaExclude>$(MSBuildProjectDirectory)\.godot\**\*.cs;$(MSBuildProjectDirectory)\bin\**\*.cs;$(MSBuildProjectDirectory)\obj\**\*.cs</_GodoniaExclude>
+
+			<_GodoniaIsSelfPackage Condition="'$(PackageId)' == 'Ouse.Godonia' OR '$(MSBuildProjectName)' == 'Ouse.Godonia'">true</_GodoniaIsSelfPackage>
+			<_GodoniaIsTemplatePack Condition="'$(PackageType)' == 'Template'">true</_GodoniaIsTemplatePack>
+
+			<_GodoniaIsGodotProject>false</_GodoniaIsGodotProject>
+			<_GodoniaIsGodotProject Condition="'$(UsingGodotNETSdk)' == 'true'">true</_GodoniaIsGodotProject>
+			<_GodoniaHasGodotSharp Condition="@(PackageReference->AnyHaveMetadataValue('Identity', 'GodotSharp'))">true</_GodoniaHasGodotSharp>
+			<_GodoniaIsGodotProject Condition="'$(_GodoniaIsGodotProject)' != 'true' AND '$(EnableDynamicLoading)' == 'true' AND '$(_GodoniaHasGodotSharp)' == 'true'">true</_GodoniaIsGodotProject>
+
+			<_GodoniaShouldInject>false</_GodoniaShouldInject>
+			<_GodoniaShouldInject Condition="'$(_GodoniaIsGodotProject)' == 'true' AND '$(_GodoniaIsSelfPackage)' != 'true' AND '$(_GodoniaIsTemplatePack)' != 'true'">true</_GodoniaShouldInject>
+			<_GodoniaShouldInject Condition="'$(GodoniaInjectHostScripts)' == 'true'">true</_GodoniaShouldInject>
+			<_GodoniaShouldInject Condition="'$(GodoniaInjectHostScripts)' == 'false'">false</_GodoniaShouldInject>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<_GodoniaExistingAvaloniaControl Include="$(MSBuildProjectDirectory)\**\AvaloniaControl.cs" Exclude="$(_GodoniaExclude)" />
+			<_GodoniaExistingUiHost Include="$(MSBuildProjectDirectory)\**\UiHost.cs" Exclude="$(_GodoniaExclude)" />
+		</ItemGroup>
+
+		<PropertyGroup>
+			<_GodoniaHasAvaloniaControl Condition="'@(_GodoniaExistingAvaloniaControl)' != ''">true</_GodoniaHasAvaloniaControl>
+			<_GodoniaHasUiHost Condition="'@(_GodoniaExistingUiHost)' != ''">true</_GodoniaHasUiHost>
+			<_GodoniaNeedAvaloniaControl Condition="'$(_GodoniaHasAvaloniaControl)' != 'true'">true</_GodoniaNeedAvaloniaControl>
+			<_GodoniaNeedUiHost Condition="'$(_GodoniaHasUiHost)' != 'true'">true</_GodoniaNeedUiHost>
+			<_GodoniaCopyAvaloniaControl Condition="'$(_GodoniaShouldInject)' == 'true' AND '$(_GodoniaNeedAvaloniaControl)' == 'true'">true</_GodoniaCopyAvaloniaControl>
+			<_GodoniaCopyUiHost Condition="'$(_GodoniaShouldInject)' == 'true' AND '$(_GodoniaNeedUiHost)' == 'true'">true</_GodoniaCopyUiHost>
+			<_GodoniaAvaloniaControlDest>$(_GodoniaHostScriptsDir)AvaloniaControl.cs</_GodoniaAvaloniaControlDest>
+			<_GodoniaUiHostDest>$(_GodoniaHostScriptsDir)UiHost.cs</_GodoniaUiHostDest>
+			<_GodoniaAvaloniaControlSrc>$(_GodoniaHostScriptsSourceDir)AvaloniaControl.cs</_GodoniaAvaloniaControlSrc>
+			<_GodoniaUiHostSrc>$(_GodoniaHostScriptsSourceDir)UiHost.cs</_GodoniaUiHostSrc>
+		</PropertyGroup>
+
+		<Error
+			Condition="('$(_GodoniaCopyAvaloniaControl)' == 'true' OR '$(_GodoniaCopyUiHost)' == 'true') AND !Exists('$(_GodoniaHostScriptsSourceDir)')"
+			Text="Godonia host-scripts directory was not found: '$(_GodoniaHostScriptsSourceDir)'. Reinstall Ouse.Godonia or set GodoniaHostScriptsSourceDir." />
+
+		<MakeDir
+			Directories="$(_GodoniaHostScriptsDir)"
+			Condition="'$(_GodoniaCopyAvaloniaControl)' == 'true' OR '$(_GodoniaCopyUiHost)' == 'true'" />
+
+		<Copy
+			SourceFiles="$(_GodoniaAvaloniaControlSrc)"
+			DestinationFiles="$(_GodoniaAvaloniaControlDest)"
+			SkipUnchangedFiles="false"
+			Condition="'$(_GodoniaCopyAvaloniaControl)' == 'true' AND Exists('$(_GodoniaAvaloniaControlSrc)') AND !Exists('$(_GodoniaAvaloniaControlDest)')" />
+
+		<Copy
+			SourceFiles="$(_GodoniaUiHostSrc)"
+			DestinationFiles="$(_GodoniaUiHostDest)"
+			SkipUnchangedFiles="false"
+			Condition="'$(_GodoniaCopyUiHost)' == 'true' AND Exists('$(_GodoniaUiHostSrc)') AND !Exists('$(_GodoniaUiHostDest)')" />
+
+		<Error
+			Condition="'$(_GodoniaCopyAvaloniaControl)' == 'true' AND !Exists('$(_GodoniaAvaloniaControlDest)')"
+			Text="Godonia failed to copy AvaloniaControl.cs to '$(_GodoniaAvaloniaControlDest)'." />
+
+		<Error
+			Condition="'$(_GodoniaCopyUiHost)' == 'true' AND !Exists('$(_GodoniaUiHostDest)')"
+			Text="Godonia failed to copy UiHost.cs to '$(_GodoniaUiHostDest)'." />
+
+		<ItemGroup>
+			<Compile Include="$(_GodoniaAvaloniaControlDest)" Condition="'$(_GodoniaCopyAvaloniaControl)' == 'true' AND Exists('$(_GodoniaAvaloniaControlDest)')" />
+			<Compile Include="$(_GodoniaUiHostDest)" Condition="'$(_GodoniaCopyUiHost)' == 'true' AND Exists('$(_GodoniaUiHostDest)')" />
+		</ItemGroup>
+
+		<Warning
+			Code="GODONIA001"
+			Condition="'$(_GodoniaCopyAvaloniaControl)' == 'true' OR '$(_GodoniaCopyUiHost)' == 'true'"
+			Text="Godonia inserted host script(s) into the Godot project. Reload Godot so it can generate .uid files. This warning is only raised when a file is actually copied." />
+
+		<Warning
+			Code="GODONIA002"
+			Condition="'$(_GodoniaIsGodotProject)' == 'true' AND '$(_GodoniaShouldInject)' != 'true' AND ('$(_GodoniaNeedAvaloniaControl)' == 'true' OR '$(_GodoniaNeedUiHost)' == 'true')"
+			Text="Godonia host script(s) are missing from this Godot project. Enable insert with &lt;GodoniaInjectHostScripts&gt;true&lt;/GodoniaInjectHostScripts&gt;, or copy AvaloniaControl.cs / UiHost.cs from the Ouse.Godonia package host-scripts/ folder." />
+
+	</Target>
+
+	<Target Name="GodoniaInjectNewPluginAddon" AfterTargets="GodoniaInjectHostScripts" BeforeTargets="BeforeCompile">
+		<PropertyGroup>
+			<_GodoniaAddonSrc>$([MSBuild]::NormalizePath('$(GodoniaEditorAddonSourceDir)\godonia_new_plugin'))</_GodoniaAddonSrc>
+			<_GodoniaAddonDest>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)\addons\godonia_new_plugin'))</_GodoniaAddonDest>
+			<_GodoniaAddonCfg>$(_GodoniaAddonDest)\plugin.cfg</_GodoniaAddonCfg>
+			<_GodoniaCopyAddon Condition="'$(_GodoniaShouldInject)' == 'true' AND Exists('$(_GodoniaAddonSrc)\plugin.cfg') AND !Exists('$(_GodoniaAddonCfg)')">true</_GodoniaCopyAddon>
+		</PropertyGroup>
+
+		<ItemGroup>
+			<_GodoniaAddonFiles Include="$(_GodoniaAddonSrc)\**\*" Condition="'$(_GodoniaCopyAddon)' == 'true'" />
+		</ItemGroup>
+
+		<MakeDir Directories="$(_GodoniaAddonDest)" Condition="'$(_GodoniaCopyAddon)' == 'true'" />
+		<Copy
+			SourceFiles="@(_GodoniaAddonFiles)"
+			DestinationFiles="@(_GodoniaAddonFiles->'$(_GodoniaAddonDest)\%(RecursiveDir)%(Filename)%(Extension)')"
+			SkipUnchangedFiles="false"
+			Condition="'$(_GodoniaCopyAddon)' == 'true'" />
+	</Target>
+
+</Project>

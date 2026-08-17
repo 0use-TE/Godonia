@@ -17,4 +17,4 @@ Node._Input
 
 ## Themes
 
-Avalonia `RequestedThemeVariant` Light/Dark works. Platform “system” theme from Estragonia currently defaults to Dark via `GodotPlatformSettings`.
+Avalonia `RequestedThemeVariant` Light/Dark works. Platform “system” theme from Godonia currently defaults to Dark via `GodotPlatformSettings`.

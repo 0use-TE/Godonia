@@ -1,0 +1,51 @@
+<Project>
+
+	<PropertyGroup>
+		<!-- Props/targets inside the Godot project folder. -->
+		<GodoniaPluginOutputDir Condition="'$(GodoniaPluginOutputDir)' == '' AND Exists('$(MSBuildThisFileDirectory)project.godot')">$(MSBuildThisFileDirectory).godot\godonia-plugins\</GodoniaPluginOutputDir>
+		<!-- In-repo samples: props live in samples/ next to HelloWorld/. -->
+		<GodoniaPluginOutputDir Condition="'$(GodoniaPluginOutputDir)' == '' AND Exists('$(MSBuildThisFileDirectory)HelloWorld\project.godot')">$(MSBuildThisFileDirectory)HelloWorld\.godot\godonia-plugins\</GodoniaPluginOutputDir>
+		<GodoniaPluginOutputDir Condition="'$(GodoniaPluginOutputDir)' == ''">$(MSBuildThisFileDirectory).godot\godonia-plugins\</GodoniaPluginOutputDir>
+	</PropertyGroup>
+
+	<!--
+		Stamp the plugin DLL so Godot can keep the previous file mapped.
+		Copy satellite packages (CommunityToolkit.Mvvm, etc.) next to it so the
+		collectible plugin ALC can resolve them. Avalonia / Godonia / GodotSharp
+		must stay in the parent ALC — do not copy those.
+	-->
+	<Target Name="CopyPluginToGodotCache" AfterTargets="Build">
+		<PropertyGroup>
+			<_PluginOut>$([MSBuild]::EnsureTrailingSlash('$(GodoniaPluginOutputDir)'))</_PluginOut>
+			<_PluginStamp>$([System.DateTime]::UtcNow.Ticks)</_PluginStamp>
+			<_PluginShadow>$(_PluginOut)$(TargetName).$(_PluginStamp).dll</_PluginShadow>
+			<_PluginPdb Condition="Exists('$(TargetDir)$(TargetName).pdb')">$(TargetDir)$(TargetName).pdb</_PluginPdb>
+		</PropertyGroup>
+		<ItemGroup>
+			<_PluginSatelliteDlls Include="$(TargetDir)*.dll" />
+			<_PluginSatelliteDlls Remove="$(TargetPath)" />
+			<_PluginSatelliteDlls Remove="$(TargetDir)Avalonia*.dll" />
+			<_PluginSatelliteDlls Remove="$(TargetDir)GodotSharp*.dll" />
+			<_PluginSatelliteDlls Remove="$(TargetDir)Ouse.Godonia.dll" />
+			<_PluginSatelliteDlls Remove="$(TargetDir)SkiaSharp*.dll" />
+			<_PluginSatelliteDlls Remove="$(TargetDir)HarfBuzzSharp*.dll" />
+			<_PluginSatelliteDlls Remove="$(TargetDir)MicroCom*.dll" />
+			<_PluginSatelliteDlls Remove="$(TargetDir)Tmds.DBus*.dll" />
+		</ItemGroup>
+		<MakeDir Directories="$(_PluginOut)" />
+		<Copy
+			SourceFiles="$(TargetPath)"
+			DestinationFiles="$(_PluginShadow)"
+			SkipUnchangedFiles="false" />
+		<Copy
+			SourceFiles="$(_PluginPdb)"
+			DestinationFiles="$(_PluginOut)$(TargetName).$(_PluginStamp).pdb"
+			SkipUnchangedFiles="false"
+			Condition="'$(_PluginPdb)' != ''" />
+		<Copy
+			SourceFiles="@(_PluginSatelliteDlls)"
+			DestinationFolder="$(_PluginOut)"
+			SkipUnchangedFiles="true" />
+	</Target>
+
+</Project>

@@ -1,19 +1,19 @@
-# Estragonia
+# Godonia
 
 在 **Godot 4** 中嵌入 **Avalonia** UI 的桥接库（Vulkan / Skia 共享纹理）。
 
-[![NuGet](https://img.shields.io/nuget/v/Ouse.Estragonia.svg)](https://www.nuget.org/packages/Ouse.Estragonia/)
-[![Templates](https://img.shields.io/nuget/v/Ouse.Estragonia.Templates.svg)](https://www.nuget.org/packages/Ouse.Estragonia.Templates/)
-[![GitHub](https://img.shields.io/badge/GitHub-0use--TE%2FEstragonia-181717?logo=github)](https://github.com/0use-TE/Estragonia)
+[![NuGet](https://img.shields.io/nuget/v/Ouse.Godonia.svg)](https://www.nuget.org/packages/Ouse.Godonia/)
+[![Templates](https://img.shields.io/nuget/v/Ouse.Godonia.Templates.svg)](https://www.nuget.org/packages/Ouse.Godonia.Templates/)
+[![GitHub](https://img.shields.io/badge/GitHub-0use--TE%2FEstragonia-181717?logo=github)](https://github.com/0use-TE/Godonia)
 
 | | 链接 |
 |--|------|
-| 库 | [Ouse.Estragonia](https://www.nuget.org/packages/Ouse.Estragonia/) |
-| 模板 | [Ouse.Estragonia.Templates](https://www.nuget.org/packages/Ouse.Estragonia.Templates/) |
-| 源码 | [github.com/0use-TE/Estragonia](https://github.com/0use-TE/Estragonia) |
+| 库 | [Ouse.Godonia](https://www.nuget.org/packages/Ouse.Godonia/) |
+| 模板 | [Ouse.Godonia.Templates](https://www.nuget.org/packages/Ouse.Godonia.Templates/) |
+| 源码 | [github.com/0use-TE/Godonia](https://github.com/0use-TE/Godonia) |
 | 文档 | [GitHub Pages](https://0use-te.github.io/Estragonia/)（推送 `main` 后由 Actions 部署） |
 
-> 代码命名空间仍为 **`JLeb.Estragonia`**；NuGet 包名为 **`Ouse.Estragonia`**（与上游 `JLeb.Estragonia` 区分）。
+> 代码命名空间仍为 **`Ouse.Godonia`**；NuGet 包名为 **`Ouse.Godonia`**（与上游 `Ouse.Godonia` 区分）。
 
 ## 重要声明
 
@@ -41,14 +41,14 @@
 ### 1. 安装模板
 
 ```bash
-dotnet new install Ouse.Estragonia.Templates
+dotnet new install Ouse.Godonia.Templates
 ```
 
 更新到新版本时先卸再装：
 
 ```bash
-dotnet new uninstall Ouse.Estragonia.Templates
-dotnet new install Ouse.Estragonia.Templates
+dotnet new uninstall Ouse.Godonia.Templates
+dotnet new install Ouse.Godonia.Templates
 ```
 
 ### 2. 创建项目
@@ -89,14 +89,14 @@ dotnet restore
 已有 Godot C# 工程时：
 
 ```bash
-dotnet add package Ouse.Estragonia
+dotnet add package Ouse.Godonia
 dotnet add package Semi.Avalonia
 # 可选 MVVM
 dotnet add package CommunityToolkit.Mvvm
 dotnet build
 ```
 
-`dotnet build` 会在缺少 `AvaloniaControl.cs` / `UiHost.cs` 时插入到 Godot 工程（首次警告 `ESTRAGONIA001`）。类型仍编进游戏程序集。不想自动插入时设 `EstragoniaInjectHostScripts` 为 `false`。
+`dotnet build` 会在缺少 `AvaloniaControl.cs` / `UiHost.cs` 时插入到 Godot 工程（首次警告 `GODONIA001`）。类型仍编进游戏程序集。不想自动插入时设 `GodoniaInjectHostScripts` 为 `false`。
 
 然后：
 
@@ -116,8 +116,8 @@ dotnet build
 ## 仓库结构
 
 ```
-src/JLeb.Estragonia/   # 桥接库（NuGet: Ouse.Estragonia）+ host-scripts 插入
-templates/             # dotnet new 模板（含宿主脚本；NuGet: Ouse.Estragonia.Templates）
+src/Ouse.Godonia/   # 桥接库（NuGet: Ouse.Godonia）+ host-scripts 插入
+templates/             # dotnet new 模板（含宿主脚本；NuGet: Ouse.Godonia.Templates）
 samples/HelloWorld/    # 示例（含 AvaloniaControl.cs / UiHost.cs 与编辑器 Dock）
 samples/HelloWorld.Editor.*  # 编辑器插件 View（独立工程，不引用进 Godot 主工程）
 docs/v1.0.0/           # 手写文档（英 / 中）

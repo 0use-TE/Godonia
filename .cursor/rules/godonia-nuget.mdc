@@ -1,0 +1,13 @@
+---
+description: Do not bump Ouse.Godonia NuGet version unless the user asks
+alwaysApply: true
+---
+
+# Ouse.Godonia package version
+
+The custom Godot editor is **not published**. Games restore `Ouse.Godonia` from the editor-local nupkg folder, not nuget.org.
+
+- Keep `Directory.Build.props` `<Version>` and template `PackageVersion Include="Ouse.Godonia"` at **1.0.0**.
+- Updating the editor (C++ / GodotTools / runtime deploy) must **not** bump this version.
+- Overwriting the local `Ouse.Godonia.1.0.0.nupkg` during deploy is fine.
+- Only change the version when the user explicitly asks to publish or bump the package.

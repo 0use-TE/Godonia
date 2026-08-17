@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="..\Godonia.EditorPlugin.props" />
+
+	<PropertyGroup>
+		<AssemblyName>HelloWorld.Editor.SkillTree</AssemblyName>
+		<RootNamespace>HelloWorld.Editor.SkillTree</RootNamespace>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Mvvm" />
+	</ItemGroup>
+
+	<Import Project="..\Godonia.EditorPlugin.targets" />
+
+</Project>

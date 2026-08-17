@@ -8,9 +8,7 @@
 
 config_version=5
 
-[animation]
-
-compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+"ï»¿config_version"=5
 
 [application]
 
@@ -21,7 +19,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-AvaloniaLoader="res://AvaloniaLoader.cs"
+AvaloniaLoader="res://UI/AvaloniaLoader.cs"
 
 [dotnet]
 
@@ -29,7 +27,7 @@ project/assembly_name="HelloWorld"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/estragonia_editor/plugin.cfg", "res://addons/estragonia_editor_log/plugin.cfg")
+enabled=PackedStringArray("res://addons/godonia_new_plugin/plugin.cfg")
 
 [rendering]
 

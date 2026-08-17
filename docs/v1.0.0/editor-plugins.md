@@ -1,13 +1,15 @@
 # Editor plugins
 
-Estragonia can host Avalonia UI in Godot editor docks. The goal is: **change a plugin view in the IDE, return to Godot, and see the new page** — without Godot unloading the game assembly, and without restarting Avalonia.
+Godonia can host Avalonia UI in Godot **docks** and **MainScreen** tabs. The goal is: **change a plugin view in the IDE, return to Godot, and see the new page** — without Godot unloading the game assembly, and without restarting Avalonia.
+
+New projects created with the Godonia editor include a **`godonia_new_plugin`** host plus a wizard dock to scaffold pages. HelloWorld shows the same pattern manually.
 
 ## Constraints
 
 | Item | Rule |
 |------|------|
 | Godot scripts | `EditorPlugin`, `AvaloniaControl`, `AvaloniaEditorHost` live in the Godot project. Class name = file name. `#if TOOLS` + `[Tool]`. |
-| Plugin views | Separate `Microsoft.NET.Sdk` csproj. Reference Estragonia only. **Do not** add `Avalonia.Desktop` / Fluent (Preview owns those). **Do not** `ProjectReference` it from the Godot project. **Do not** use Godot.NET.Sdk. **No** `GodotObject` types in the plugin assembly. |
+| Plugin views | Separate `Microsoft.NET.Sdk` csproj. Reference **Ouse.Godonia** only. **Do not** add `Avalonia.Desktop` / Fluent (Preview owns those). **Do not** `ProjectReference` the plugin from the Godot project. **Do not** use Godot.NET.Sdk. **No** `GodotObject` types in the plugin assembly. |
 | Reload | Collectible ALC + `host.Control = new page`. Not a Godot Build. |
 | Avalonia | `SetupWithoutStarting` once per editor process. Never `Shutdown`. |
 | Plugins | Each plugin is a thin `EditorPlugin`. Do not introduce an abstract `EditorPlugin` base. |
@@ -18,46 +20,68 @@ Plugin sources must sit **outside** the Godot project tree (or be `Compile Remov
 
 ```
 samples/
-  HelloWorld/                         Godot project
-    addons/estragonia_editor/         thin shell only: plugin.cfg + plugin.json + EditorPlugin
-    addons/estragonia_editor_log/
+  HelloWorld/                              Godot project
+    addons/godonia_new_plugin/             host + wizard + pages/*.json
     AvaloniaControl.cs / UiHost.cs / AvaloniaEditorHost.cs
-  HelloWorld.Editor.Demo/             plugin views; output copied to .godot/estragonia-plugins/
-  HelloWorld.Editor.Log/
-  HelloWorld.Editor.Preview/          solution startup project: desktop preview of both docks (no Godot)
+  HelloWorld.Editor.SkillTree/             Left dock — skill tree
+  HelloWorld.Editor.QuestManager/          Bottom dock — quest list
+  HelloWorld.Editor.WorldManager/          MainScreen — region streaming tool
+  HelloWorld.Editor.Preview/               F5 desktop tabs for all three
 ```
 
-`plugin.json` example:
+HelloWorld ships three page manifests under `addons/godonia_new_plugin/pages/`. New game projects use the same host; the in-editor wizard can scaffold more.
+
+`plugin.json` / pages manifest example:
 
 ```json
 {
-  "id": "estragonia.demo",
-  "assembly": ".godot/estragonia-plugins/HelloWorld.Editor.Demo.dll",
-  "pageType": "HelloWorld.Editor.Demo.DemoPage"
+  "id": "mygame.inspector",
+  "assembly": ".godot/godonia-plugins/MyGame.Editor.Inspector.dll",
+  "pageType": "MyGame.Editor.Inspector.InspectorPage",
+  "dockSlot": "LeftUL"
 }
 ```
 
+`dockSlot` may be a dock position (`LeftUL`, `RightUL`, …) or **`MainScreen`** (top editor button / tab).
+
 The Godot project must **not** reference the editor csproj. The solution still can, so you can build the plugin from the IDE.
 
-Do **not** delete the thin `EditorPlugin` scripts under `addons/`: Godot requires `plugin.cfg` to point at a script in the game assembly (class name = file name). Views / `IEditorPage` do not live in addons. `AvaloniaEditorHost` lives at the Godot project root and is shared by both docks — do not copy it into each addon.
+`AvaloniaEditorHost` lives at the Godot project root and is shared — do not copy it into each addon.
+
+## Wizard (scaffolder)
+
+With `godonia_new_plugin` enabled:
+
+1. Use the **Godonia** wizard dock to create a page (name, dock slot / MainScreen).
+2. The scaffolder creates a sibling `{Game}.Editor.{Name}` project, a manifest under `addons/godonia_new_plugin/pages/`, and wires **Preview** `ProjectReference` when requested.
+3. Build the editor project so the DLL lands under `.godot/godonia-plugins/`.
+4. Focus Godot (or reload) so the host picks up the new manifest.
+
+## Preview project
+
+`{Game}.Editor.Preview` is a **WinExe** Avalonia desktop app (not Godot.NET.Sdk). Set it as the solution startup project and press F5 to preview dock / MainScreen pages without opening Godot.
+
+- Plugin projects do **not** reference `Avalonia.Desktop`; do not open the XAML designer on those projects alone.
+- Generated views include `mc:Ignorable="d"` design size attributes for the Preview designer.
 
 ## Workflow
 
-1. Set **HelloWorld.Editor.Preview** as the solution startup project and press F5 to preview Demo / Log. Plugin projects do not reference desktop Avalonia; do not use the XAML designer on those projects.
-2. Open `samples/HelloWorld` in Godot 4.7+ (.NET). Enable the two Estragonia editor plugins if needed.
-3. Build `HelloWorld.Editor.Demo` (and Log) once so DLLs exist under `.godot/estragonia-plugins/` (building Preview builds them too).
-4. Change `DemoView.axaml`, **build only that editor project**. If Godot still has the previous DLL open, the build writes a timestamped copy instead of failing; focus Godot to load it.
-5. Focus Godot or click **Reload this plugin**.
-6. The left dock updates; the log dock is left alone if its DLL did not change.
+1. Set **`{Game}.Editor.Preview`** as the solution startup project and press F5 to preview pages.
+2. Open the Godot project in the **Godonia** editor. Enable `godonia_new_plugin` if needed.
+3. Build editor plugin projects once so DLLs exist under `.godot/godonia-plugins/` (building Preview builds them too).
+4. Change a view `.axaml`, **build only that editor project**. If Godot still has the previous DLL open, the build writes a timestamped copy instead of failing; focus Godot to load it.
+5. Focus Godot or use the host reload path.
+6. Only the changed plugin page updates.
 
-Do not press Godot’s build hammer to refresh plugin UI. Changing `EstragoniaEditorPlugin.cs` / `AvaloniaEditorHost.cs` still requires a Godot C# build.
+Do not press Godot’s build hammer to refresh plugin UI. Changing thin `EditorPlugin` / `AvaloniaEditorHost` scripts still requires a Godot C# build.
 
 ## API
 
 - `AvaloniaEditorRuntime.EnsureStarted()` — process-wide `EditorAvaloniaApp` (Fluent dark). No-op the second time.
-- `EditorPluginCatalog.RegisterManifest(path)` — load `plugin.json`.
+- `EditorPluginCatalog.RegisterManifest(path)` — load manifest JSON.
 - `EditorPluginCatalog.Reload(id)` / `ReloadChanged()` / `UnloadAll()`.
 - `IEditorPage` — implement in the plugin assembly; `Create()` returns a `UserControl`.
+- `EditorPluginScaffolder` — creates sibling editor projects + manifests (used by the wizard).
 - `EditorLogHub` — framework-owned log buffer. Plugins should snapshot it, not subscribe to their own static events.
 
 `AvaloniaEditorHost` (in-project `[Tool]` script) sets `PluginId` and registers itself with the catalog. `Detach()` clears the Avalonia page and keeps the Godot node / TopLevel.

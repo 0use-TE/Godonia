@@ -1,0 +1,33 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="GodotGame"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+AvaloniaLoader="res://UI/AvaloniaLoader.cs"
+
+[dotnet]
+
+project/assembly_name="GodotGame"
+project/solution_directory=".."
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godonia_new_plugin/plugin.cfg")
+
+[rendering]
+
+anti_aliasing/quality/screen_space_aa=1

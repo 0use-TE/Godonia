@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:vm="using:HelloWorld.Editor.QuestManager"
+	mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="200"
+	x:Class="HelloWorld.Editor.QuestManager.QuestManagerView"
+	x:DataType="vm:QuestManagerViewModel">
+	<DockPanel Margin="12">
+		<StackPanel DockPanel.Dock="Left" Width="220" Spacing="8" Margin="0,0,16,0">
+			<TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" />
+			<TextBlock Text="{Binding Status}" Opacity="0.8" TextWrapping="Wrap" FontSize="12" />
+			<Button Content="Add quest" Command="{Binding AddCommand}" HorizontalAlignment="Stretch" />
+			<Button Content="Complete selected" Command="{Binding CompleteCommand}" HorizontalAlignment="Stretch" />
+		</StackPanel>
+		<DockPanel>
+			<Grid DockPanel.Dock="Top" ColumnDefinitions="80,*,*,100" Margin="0,0,0,6">
+				<TextBlock Text="Id" FontWeight="SemiBold" Opacity="0.7" />
+				<TextBlock Grid.Column="1" Text="Quest" FontWeight="SemiBold" Opacity="0.7" />
+				<TextBlock Grid.Column="2" Text="Giver" FontWeight="SemiBold" Opacity="0.7" />
+				<TextBlock Grid.Column="3" Text="State" FontWeight="SemiBold" Opacity="0.7" />
+			</Grid>
+			<ListBox ItemsSource="{Binding Quests}" SelectedItem="{Binding Selected}">
+				<ListBox.ItemTemplate>
+					<DataTemplate x:DataType="vm:QuestRow">
+						<Grid ColumnDefinitions="80,*,*,100" Margin="0,4">
+							<TextBlock Text="{Binding Id}" />
+							<TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+							<TextBlock Grid.Column="2" Text="{Binding Giver}" Opacity="0.85" />
+							<TextBlock Grid.Column="3" Text="{Binding State}" />
+						</Grid>
+					</DataTemplate>
+				</ListBox.ItemTemplate>
+			</ListBox>
+		</DockPanel>
+	</DockPanel>
+</UserControl>
