@@ -37,8 +37,19 @@ namespace GodotTools
                 if (string.IsNullOrEmpty(exe))
                     return null;
 
-                string dir = Path.Combine(Path.GetDirectoryName(exe)!, "GodotSharp", "Godonia", "project-template");
-                return IsNestedTemplate(dir) || File.Exists(Path.Combine(dir, "project.godot")) ? dir : null;
+                string exeDir = Path.GetDirectoryName(exe)!;
+                string godotSharp = Path.Combine(exeDir, "GodotSharp");
+                foreach (string dir in new[]
+                {
+                    Path.Combine(godotSharp, "Godonia", "project-template"),
+                    Path.Combine(godotSharp, "Tools", "project-template"),
+                })
+                {
+                    if (IsNestedTemplate(dir) || File.Exists(Path.Combine(dir, "project.godot")))
+                        return dir;
+                }
+
+                return null;
             }
         }
 
@@ -60,9 +71,6 @@ namespace GodotTools
             if (template is null)
                 return false;
 
-            if (Directory.EnumerateFiles(projectDir, "*.csproj").Any())
-                return true;
-
             string csName = IdentifierUtils.SanitizeQualifiedIdentifier(
                 string.IsNullOrWhiteSpace(assemblyName) ? "GodotGame" : assemblyName,
                 allowEmptyIdentifiers: true);
@@ -71,17 +79,28 @@ namespace GodotTools
 
             bool nested = IsNestedTemplate(template);
             string godotSrc = nested ? Path.Combine(template, "GodotGame") : template;
+            bool hadCsproj = Directory.EnumerateFiles(projectDir, "*.csproj").Any();
+            bool isGodonia = File.Exists(Path.Combine(projectDir, "UI", "AvaloniaLoader.cs"))
+                || File.Exists(Path.Combine(projectDir, "AvaloniaControl.cs"));
 
-            CopyDirectory(godotSrc, projectDir, skipProjectGodot: File.Exists(Path.Combine(projectDir, "project.godot")));
-            string templateConfig = Path.Combine(projectDir, ".template.config");
-            if (Directory.Exists(templateConfig))
-                Directory.Delete(templateConfig, recursive: true);
+            // Existing non-Godonia C# project: do not write sibling Avalonia files into its parent folder.
+            if (hadCsproj && !isGodonia)
+                return true;
 
             string nupkg = (NupkgDirectory ?? "").Replace('\\', '/');
-            foreach (string file in EnumerateFiles(projectDir))
-                ReplaceInFile(file, "GodotGame", csName, nupkg);
 
-            TryRename(Path.Combine(projectDir, "GodotGame.csproj"), Path.Combine(projectDir, csName + ".csproj"));
+            if (!hadCsproj)
+            {
+                CopyDirectory(godotSrc, projectDir, skipProjectGodot: File.Exists(Path.Combine(projectDir, "project.godot")));
+                string templateConfig = Path.Combine(projectDir, ".template.config");
+                if (Directory.Exists(templateConfig))
+                    Directory.Delete(templateConfig, recursive: true);
+
+                foreach (string file in EnumerateFiles(projectDir))
+                    ReplaceInFile(file, "GodotGame", csName, nupkg);
+
+                TryRename(Path.Combine(projectDir, "GodotGame.csproj"), Path.Combine(projectDir, csName + ".csproj"));
+            }
 
             if (nested)
             {
@@ -94,18 +113,22 @@ namespace GodotTools
                 }
                 CopyEditorPreviewIfMissing(template, parent, csName, nupkg);
                 WriteNugetConfig(parent, nupkg);
+                RemoveLegacySlnIfSlxnExists(parent, csName);
                 Godot.ProjectSettings.SetSetting("dotnet/project/solution_directory", "..");
                 Godot.ProjectSettings.SetSetting("dotnet/project/assembly_name", csName);
             }
-            else
+            else if (!hadCsproj)
             {
                 TryRename(Path.Combine(projectDir, "GodoniaApp.slnx"), Path.Combine(projectDir, csName + ".slnx"));
                 TryRename(Path.Combine(projectDir, "GodoniaApp.sln"), Path.Combine(projectDir, csName + ".slnx"));
                 WriteNugetConfig(projectDir, nupkg);
             }
 
-            MergeProjectGodot(projectDir, csName, nested);
-            return File.Exists(Path.Combine(projectDir, csName + ".csproj"));
+            if (!hadCsproj || File.Exists(Path.Combine(projectDir, "UI", "AvaloniaLoader.cs")))
+                MergeProjectGodot(projectDir, csName, nested);
+
+            return File.Exists(Path.Combine(projectDir, csName + ".csproj"))
+                || Directory.EnumerateFiles(projectDir, "*.csproj").Any();
         }
 
         private static bool IsNestedTemplate(string template)
@@ -149,6 +172,14 @@ namespace GodotTools
             TryRename(Path.Combine(dest, "GodotGame.Editor.Preview.csproj"), Path.Combine(dest, csName + ".Editor.Preview.csproj"));
             foreach (string file in EnumerateFiles(dest))
                 ReplaceInFile(file, "GodotGame", csName, nupkg);
+        }
+
+        private static void RemoveLegacySlnIfSlxnExists(string parent, string csName)
+        {
+            string slnx = Path.Combine(parent, csName + ".slnx");
+            string sln = Path.Combine(parent, csName + ".sln");
+            if (File.Exists(slnx) && File.Exists(sln))
+                File.Delete(sln);
         }
 
         private static void WriteNugetConfig(string projectDir, string nupkg)

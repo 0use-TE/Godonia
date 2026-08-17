@@ -55,6 +55,8 @@
 #include "servers/display/display_server.h"
 #include "servers/rendering/rendering_server.h"
 
+static String _estragonia_template_dir();
+
 void ProjectDialog::_set_message(const String &p_msg, MessageType p_type, InputType p_input_type) {
 	msg->set_text(p_msg);
 
@@ -260,6 +262,8 @@ void ProjectDialog::_validate_path() {
 
 			if (!is_folder_empty) {
 				_set_message(TTRC("The selected path is not empty. Choosing an empty folder is highly recommended."), MESSAGE_WARNING, target_path_input_type);
+			} else if (mode == MODE_NEW && _estragonia_template_dir().is_empty()) {
+				_set_message(TTRC("Godonia Avalonia template was not found next to this editor (GodotSharp/Godonia/project-template). New projects will be created without Avalonia UI. Copy that folder with the editor, or run scripts/deploy-godonia-editor.ps1."), MESSAGE_WARNING, target_path_input_type);
 			}
 		}
 	}
@@ -543,11 +547,21 @@ void ProjectDialog::_nonempty_confirmation_ok_pressed() {
 	ok_pressed();
 }
 
+static bool _estragonia_is_template_dir(const String &p_dir) {
+	return FileAccess::exists(p_dir.path_join("GodotGame").path_join("project.godot")) || FileAccess::exists(p_dir.path_join("project.godot"));
+}
+
 static String _estragonia_template_dir() {
 	const String exe_dir = OS::get_singleton()->get_executable_path().get_base_dir();
-	const String dir = exe_dir.path_join("GodotSharp").path_join("Godonia").path_join("project-template");
-	if (FileAccess::exists(dir.path_join("GodotGame").path_join("project.godot")) || FileAccess::exists(dir.path_join("project.godot"))) {
-		return dir;
+	const String godot_sharp = exe_dir.path_join("GodotSharp");
+	PackedStringArray candidates;
+	candidates.push_back(godot_sharp.path_join("Godonia").path_join("project-template"));
+	// Travels with GodotTools.dll when only Tools/ is copied.
+	candidates.push_back(godot_sharp.path_join("Tools").path_join("project-template"));
+	for (const String &dir : candidates) {
+		if (_estragonia_is_template_dir(dir)) {
+			return dir;
+		}
 	}
 	return String();
 }
@@ -586,7 +600,7 @@ static bool _estragonia_is_text_file(const String &p_path) {
 		return true;
 	}
 	const String ext = p_path.get_extension().to_lower();
-	return ext == "cs" || ext == "csproj" || ext == "sln" || ext == "axaml" || ext == "godot" || ext == "json" ||
+	return ext == "cs" || ext == "csproj" || ext == "sln" || ext == "slnx" || ext == "axaml" || ext == "godot" || ext == "json" ||
 			ext == "md" || ext == "props" || ext == "targets" || ext == "config" || ext == "tscn" || ext == "cfg" ||
 			ext == "svg";
 }
@@ -668,35 +682,27 @@ static void _estragonia_install_parent_file(const String &p_from, const String &
 	}
 }
 
-static void _estragonia_write_sln(const String &p_sln_path, const String &p_folder, const String &p_cs_name) {
-	if (FileAccess::exists(p_sln_path)) {
+static void _estragonia_copy_dir_contents(const String &p_from, const String &p_to) {
+	Ref<DirAccess> da = DirAccess::open(p_from);
+	ERR_FAIL_COND(da.is_null());
+	const Error err = da->copy_dir(".", p_to);
+	ERR_FAIL_COND_MSG(err != OK, vformat("Failed to copy directory '%s' -> '%s'.", p_from, p_to));
+}
+
+static void _estragonia_install_editor_preview(const String &p_template_dir, const String &p_workspace, const String &p_cs_name, const String &p_nupkg) {
+	const String preview_src = p_template_dir.path_join("GodotGame.Editor.Preview");
+	if (!DirAccess::dir_exists_absolute(preview_src)) {
 		return;
 	}
-	const String rel = p_folder + "\\" + p_cs_name + ".csproj";
-	const String guid = "A1B2C3D4-E5F6-7890-ABCD-EF1234567890";
-	String content;
-	content += "\nMicrosoft Visual Studio Solution File, Format Version 12.00\n";
-	content += "# Visual Studio 2012\n";
-	content += "Project(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"" + p_cs_name + "\", \"" + rel + "\", \"{" + guid + "}\"\n";
-	content += "EndProject\n";
-	content += "Global\n";
-	content += "	GlobalSection(SolutionConfigurationPlatforms) = preSolution\n";
-	content += "	Debug|Any CPU = Debug|Any CPU\n";
-	content += "	ExportDebug|Any CPU = ExportDebug|Any CPU\n";
-	content += "	ExportRelease|Any CPU = ExportRelease|Any CPU\n";
-	content += "	EndGlobalSection\n";
-	content += "	GlobalSection(ProjectConfigurationPlatforms) = postSolution\n";
-	content += "		{" + guid + "}.Debug|Any CPU.ActiveCfg = Debug|Any CPU\n";
-	content += "		{" + guid + "}.Debug|Any CPU.Build.0 = Debug|Any CPU\n";
-	content += "		{" + guid + "}.ExportDebug|Any CPU.ActiveCfg = ExportDebug|Any CPU\n";
-	content += "		{" + guid + "}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU\n";
-	content += "		{" + guid + "}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU\n";
-	content += "		{" + guid + "}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU\n";
-	content += "	EndGlobalSection\n";
-	content += "EndGlobal\n";
-	Ref<FileAccess> f = FileAccess::open(p_sln_path, FileAccess::WRITE);
-	ERR_FAIL_COND(f.is_null());
-	f->store_string(content);
+
+	const String preview_dest = p_workspace.path_join(p_cs_name + ".Editor.Preview");
+	_estragonia_copy_dir_contents(preview_src, preview_dest);
+	_estragonia_rewrite_tree(preview_dest, p_cs_name, p_nupkg);
+
+	Ref<DirAccess> pda = DirAccess::open(preview_dest);
+	if (pda.is_valid() && pda->file_exists("GodotGame.Editor.Preview.csproj")) {
+		pda->rename("GodotGame.Editor.Preview.csproj", p_cs_name + ".Editor.Preview.csproj");
+	}
 }
 
 static Error _install_estragonia_project(const String &p_workspace, const String &p_display_name, const String &p_renderer_type, String &r_godot_path) {
@@ -738,8 +744,10 @@ static Error _install_estragonia_project(const String &p_workspace, const String
 		_estragonia_install_parent_file(template_dir.path_join("README.md"), p_workspace.path_join("README.md"), cs_name, nupkg);
 		_estragonia_install_parent_file(template_dir.path_join(".gitignore"), p_workspace.path_join(".gitignore"), cs_name, nupkg);
 		_estragonia_install_parent_file(template_dir.path_join(".gitattributes"), p_workspace.path_join(".gitattributes"), cs_name, nupkg);
-		_estragonia_write_sln(p_workspace.path_join(cs_name + ".sln"), cs_name, cs_name);
+		_estragonia_install_parent_file(template_dir.path_join("GodoniaApp.slnx"), p_workspace.path_join(cs_name + ".slnx"), cs_name, nupkg);
+		_estragonia_install_editor_preview(template_dir, p_workspace, cs_name, nupkg);
 		_estragonia_write_nuget_config(p_workspace, nupkg);
+		DirAccess::remove_absolute(p_workspace.path_join(cs_name + ".sln"));
 	} else if (project_da.is_valid()) {
 		if (project_da->file_exists("GodoniaApp.sln")) {
 			project_da->rename("GodoniaApp.sln", cs_name + ".sln");

@@ -61,4 +61,19 @@
     <ProjectReference Include="..\GodotTools.Core\GodotTools.Core.csproj" />
   </ItemGroup>
 
+  <!-- Ship the Avalonia project template next to the editor so copying bin/ includes it. -->
+  <Target Name="CopyGodoniaProjectTemplate" AfterTargets="Build"
+          Condition="Exists('$(GodotApiAssembliesDir)/GodotSharp.dll') And Exists('$(GodotSourceRootPath)/../editor/project-template')">
+    <ItemGroup>
+      <_GodoniaTemplate Include="$(GodotSourceRootPath)/../editor/project-template/**/*"
+                        Exclude="$(GodotSourceRootPath)/../editor/project-template/**/bin/**;$(GodotSourceRootPath)/../editor/project-template/**/obj/**;$(GodotSourceRootPath)/../editor/project-template/**/.godot/**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_GodoniaTemplate)"
+          DestinationFiles="@(_GodoniaTemplate->'$(GodotOutputDataDir)/Godonia/project-template/%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_GodoniaTemplate)"
+          DestinationFiles="@(_GodoniaTemplate->'$(GodotOutputDataDir)/Tools/project-template/%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

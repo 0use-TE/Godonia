@@ -61,6 +61,10 @@ namespace GodotTools
         [UsedImplicitly]
         private bool CreateProjectSolutionIfNeeded()
         {
+            string csprojDir = Path.GetDirectoryName(GodotSharpDirs.ProjectCsProjPath)!;
+            GodoniaEditorBootstrap.TryInstall(csprojDir, GodotSharpDirs.ProjectAssemblyName);
+            GodotSharpDirs.DetermineProjectLocation();
+
             if (!File.Exists(GodotSharpDirs.ProjectSlnPath) || !File.Exists(GodotSharpDirs.ProjectCsProjPath))
             {
                 return CreateProjectSolution();
@@ -552,6 +556,9 @@ namespace GodotTools
 
             if (File.Exists(GodotSharpDirs.ProjectCsProjPath))
             {
+                string csprojDir = Path.GetDirectoryName(GodotSharpDirs.ProjectCsProjPath)!;
+                if (GodoniaEditorBootstrap.TryInstall(csprojDir, GodotSharpDirs.ProjectAssemblyName))
+                    GodotSharpDirs.DetermineProjectLocation();
                 ApplyNecessaryChangesToSolution();
             }
             else
