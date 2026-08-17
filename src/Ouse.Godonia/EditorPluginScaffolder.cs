@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace Ouse.Godonia;
@@ -49,13 +50,30 @@ public sealed class EditorPluginScaffoldResult {
 
 }
 
+/// <summary>A page listed from <c>addons/godonia_new_plugin/pages/*.json</c>.</summary>
+public sealed class InstalledEditorPlugin {
+
+	public required string Id { get; init; }
+
+	public required string Title { get; init; }
+
+	public required string DockSlot { get; init; }
+
+	public required string ManifestPath { get; init; }
+
+	public string? ProjectName { get; init; }
+
+	public string? ProjectDir { get; init; }
+
+}
+
 /// <summary>Creates a collectible Avalonia editor plugin project plus a thin Godot addon.</summary>
 public static class EditorPluginScaffolder {
 
 	public static EditorPluginScaffoldResult Create(EditorPluginScaffoldRequest request) {
 		ArgumentNullException.ThrowIfNull(request);
 
-		var godotRoot = Path.GetFullPath(request.GodotProjectRoot);
+		var godotRoot = NormalizeDir(request.GodotProjectRoot);
 		if (!Directory.Exists(godotRoot))
 			return Fail($"Godot project folder not found: {godotRoot}");
 
@@ -142,6 +160,100 @@ public static class EditorPluginScaffolder {
 			ManifestPath = manifestPath,
 			WrittenFiles = written,
 			Message = $"Created {projectName}. Edit the AXAML there and build that project — Godot Build is not needed."
+		};
+	}
+
+	public static IReadOnlyList<InstalledEditorPlugin> ListInstalled(string godotProjectRoot) {
+		var godotRoot = NormalizeDir(godotProjectRoot);
+		var pagesDir = Path.Combine(godotRoot, "addons", "godonia_new_plugin", "pages");
+		var list = new List<InstalledEditorPlugin>();
+		if (!Directory.Exists(pagesDir))
+			return list;
+
+		var parent = Path.GetDirectoryName(godotRoot);
+		foreach (var json in Directory.EnumerateFiles(pagesDir, "*.json")) {
+			EditorPluginManifest? manifest;
+			try {
+				manifest = JsonSerializer.Deserialize<EditorPluginManifest>(File.ReadAllText(json));
+			}
+			catch {
+				continue;
+			}
+
+			if (manifest is null || string.IsNullOrWhiteSpace(manifest.Id))
+				continue;
+
+			var projectName = Path.GetFileNameWithoutExtension(manifest.Assembly.Replace('\\', '/'));
+			string? projectDir = null;
+			if (!string.IsNullOrEmpty(projectName) && parent is not null) {
+				var dir = Path.Combine(parent, projectName);
+				if (Directory.Exists(dir))
+					projectDir = dir;
+			}
+
+			list.Add(new InstalledEditorPlugin {
+				Id = manifest.Id,
+				Title = string.IsNullOrWhiteSpace(manifest.Title) ? manifest.Id : manifest.Title,
+				DockSlot = manifest.DockSlot,
+				ManifestPath = json,
+				ProjectName = string.IsNullOrEmpty(projectName) ? null : projectName,
+				ProjectDir = projectDir
+			});
+		}
+
+		return list.OrderBy(p => p.Title, StringComparer.OrdinalIgnoreCase).ToList();
+	}
+
+	public static EditorPluginScaffoldResult Uninstall(string godotProjectRoot, string pluginId) {
+		ArgumentNullException.ThrowIfNull(godotProjectRoot);
+		if (string.IsNullOrWhiteSpace(pluginId))
+			return Fail("Plugin id is required.");
+
+		var godotRoot = NormalizeDir(godotProjectRoot);
+		var installed = ListInstalled(godotRoot)
+			.FirstOrDefault(p => string.Equals(p.Id, pluginId.Trim(), StringComparison.OrdinalIgnoreCase));
+		if (installed is null)
+			return Fail($"Plugin '{pluginId}' was not found.");
+
+		if (EditorPluginCatalog.IsRunningInsideGodot)
+			EditorPluginCatalog.Unregister(installed.Id);
+
+		try {
+			if (File.Exists(installed.ManifestPath))
+				File.Delete(installed.ManifestPath);
+		}
+		catch (Exception ex) {
+			return Fail($"Could not delete {installed.ManifestPath}: {ex.Message}");
+		}
+
+		if (!string.IsNullOrEmpty(installed.ProjectName)) {
+			TryRemoveFromPreview(godotRoot, installed.ProjectName);
+			TryRemoveFromSolution(godotRoot, installed.ProjectName);
+			TryDeleteCachedDlls(godotRoot, installed.ProjectName);
+		}
+
+		var folderError = (string?)null;
+		if (installed.ProjectDir is not null && Directory.Exists(installed.ProjectDir)) {
+			try {
+				Directory.Delete(installed.ProjectDir, recursive: true);
+			}
+			catch (Exception ex) {
+				folderError = ex.Message;
+			}
+		}
+
+		if (EditorPluginCatalog.IsRunningInsideGodot)
+			EditorPluginCatalog.NotifyPagesChanged();
+
+		var message = folderError is null
+			? $"Removed {installed.Title} ({installed.Id})."
+			: $"Removed {installed.Id}. Could not delete folder {installed.ProjectDir}: {folderError}";
+
+		return new EditorPluginScaffoldResult {
+			Success = true,
+			Message = message,
+			PluginProjectDir = installed.ProjectDir,
+			ManifestPath = installed.ManifestPath
 		};
 	}
 
@@ -448,25 +560,152 @@ public static class EditorPluginScaffolder {
 		return null;
 	}
 
+	private static string NormalizeDir(string path)
+		=> Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+	/// <summary>
+	/// Preview csproj lives in a sibling folder <c>{Game}.Editor.Preview/</c>, not next to <c>project.godot</c>.
+	/// </summary>
+	private static string? FindExistingPreviewCsproj(string godotRoot) {
+		var parent = Path.GetDirectoryName(NormalizeDir(godotRoot));
+		if (string.IsNullOrEmpty(parent) || !Directory.Exists(parent))
+			return null;
+
+		var game = GameIdentifier(godotRoot);
+		var expected = Path.Combine(parent, game + ".Editor.Preview", game + ".Editor.Preview.csproj");
+		if (File.Exists(expected))
+			return expected;
+
+		try {
+			foreach (var dir in Directory.GetDirectories(parent, "*.Editor.Preview")) {
+				foreach (var csproj in Directory.GetFiles(dir, "*.csproj")) {
+					if (csproj.EndsWith(".Editor.Preview.csproj", StringComparison.OrdinalIgnoreCase))
+						return csproj;
+				}
+			}
+		}
+		catch (IOException) {
+		}
+
+		return null;
+	}
+
 	private static void TryAddToPreview(string godotRoot, string pluginDir, string projectName) {
-		var preview = EnsureEditorPreviewProject(godotRoot)
-			?? Directory.GetFiles(Path.GetDirectoryName(godotRoot) ?? godotRoot, "*.Editor.Preview.csproj", SearchOption.TopDirectoryOnly)
-				.FirstOrDefault()
-			?? FindFileUp(godotRoot, "*.Editor.Preview.csproj", 3);
+		var preview = EnsureEditorPreviewProject(godotRoot) ?? FindExistingPreviewCsproj(godotRoot);
 		if (preview is null || !File.Exists(preview))
 			return;
 
-		var text = File.ReadAllText(preview);
-		var rel = Path.GetRelativePath(Path.GetDirectoryName(preview)!, Path.Combine(pluginDir, projectName + ".csproj")).Replace('\\', '/');
-		if (text.Contains(rel, StringComparison.OrdinalIgnoreCase) || text.Contains(projectName + ".csproj", StringComparison.OrdinalIgnoreCase))
+		AddCsprojProjectReference(preview, Path.Combine(pluginDir, projectName + ".csproj"));
+	}
+
+	private static void TryRemoveFromPreview(string godotRoot, string projectName) {
+		var preview = FindExistingPreviewCsproj(godotRoot);
+		if (preview is null || !File.Exists(preview))
+			return;
+
+		RemoveCsprojProjectReference(preview, projectName);
+	}
+
+	private static void RemoveCsprojProjectReference(string csprojPath, string projectName) {
+		var text = File.ReadAllText(csprojPath);
+		var pattern = @"[ \t]*<ProjectReference Include=""[^""]*"
+			+ Regex.Escape(projectName)
+			+ @"\.csproj""(?:\s*/>|\s*>[\s\S]*?</ProjectReference>)\r?\n?";
+		var updated = Regex.Replace(text, pattern, "", RegexOptions.IgnoreCase);
+		if (updated != text)
+			File.WriteAllText(csprojPath, updated);
+	}
+
+	private static void TryRemoveFromSolution(string godotRoot, string projectName) {
+		var solution = FindSolutionUp(godotRoot, 4);
+		if (solution is null)
+			return;
+
+		var text = File.ReadAllText(solution);
+		if (solution.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase)) {
+			var pattern = @"^[ \t]*<Project Path=""[^""]*"
+				+ Regex.Escape(projectName)
+				+ @"\.csproj""\s*/>\r?\n?";
+			var updated = Regex.Replace(text, pattern, "", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+			if (updated != text)
+				File.WriteAllText(solution, updated);
+			return;
+		}
+
+		TryRemoveFromLegacySln(solution, text, projectName);
+	}
+
+	private static void TryRemoveFromLegacySln(string path, string text, string projectName) {
+		var project = Regex.Match(
+			text,
+			@"Project\(""\{[^}]+\}""\) = """ + Regex.Escape(projectName)
+			+ @""", ""[^""]+"", ""(\{[^}]+\})""\r?\nEndProject\r?\n?",
+			RegexOptions.IgnoreCase);
+		if (!project.Success)
+			return;
+
+		text = text.Remove(project.Index, project.Length);
+		var guid = project.Groups[1].Value;
+		text = Regex.Replace(
+			text,
+			@"^[ \t]*" + Regex.Escape(guid) + @".*\r?\n?",
+			"",
+			RegexOptions.Multiline | RegexOptions.IgnoreCase);
+		File.WriteAllText(path, text);
+	}
+
+	private static void TryDeleteCachedDlls(string godotRoot, string projectName) {
+		var dir = Path.Combine(godotRoot, ".godot", "godonia-plugins");
+		if (!Directory.Exists(dir))
+			return;
+
+		foreach (var file in Directory.EnumerateFiles(dir)) {
+			var name = Path.GetFileName(file);
+			if (!name.StartsWith(projectName, StringComparison.OrdinalIgnoreCase))
+				continue;
+			var rest = name[projectName.Length..];
+			if (rest.Length > 0 && rest[0] != '.')
+				continue;
+
+			try {
+				File.Delete(file);
+			}
+			catch {
+			}
+		}
+	}
+
+	private static void AddCsprojProjectReference(string csprojPath, string referencedCsprojPath) {
+		var text = File.ReadAllText(csprojPath);
+		var rel = Path.GetRelativePath(Path.GetDirectoryName(csprojPath)!, referencedCsprojPath).Replace('\\', '/');
+		var fileName = Path.GetFileName(referencedCsprojPath);
+		if (text.Contains(rel, StringComparison.OrdinalIgnoreCase)
+			|| text.Contains(fileName, StringComparison.OrdinalIgnoreCase))
 			return;
 
 		var item = $"\t\t<ProjectReference Include=\"{rel}\" />{Environment.NewLine}";
-		// Insert into the first ItemGroup that already has PackageReference/ProjectReference (or any ItemGroup).
-		var close = text.IndexOf("</ItemGroup>", StringComparison.Ordinal);
-		if (close < 0)
+
+		var lastRef = text.LastIndexOf("<ProjectReference ", StringComparison.OrdinalIgnoreCase);
+		if (lastRef >= 0) {
+			var close = text.IndexOf("</ItemGroup>", lastRef, StringComparison.OrdinalIgnoreCase);
+			if (close >= 0) {
+				File.WriteAllText(csprojPath, text.Insert(close, item));
+				return;
+			}
+		}
+
+		var firstClose = text.IndexOf("</ItemGroup>", StringComparison.OrdinalIgnoreCase);
+		if (firstClose >= 0) {
+			File.WriteAllText(csprojPath, text.Insert(firstClose, item));
 			return;
-		File.WriteAllText(preview, text.Insert(close, item));
+		}
+
+		var projectClose = text.LastIndexOf("</Project>", StringComparison.OrdinalIgnoreCase);
+		if (projectClose < 0)
+			return;
+
+		var group = $"{Environment.NewLine}\t<ItemGroup>{Environment.NewLine}{item}\t</ItemGroup>{Environment.NewLine}";
+		File.WriteAllText(csprojPath, text.Insert(projectClose, group));
 	}
 
 	/// <summary>
@@ -474,11 +713,12 @@ public static class EditorPluginScaffolder {
 	/// so designer preview works and new docks can be ProjectReferenced.
 	/// </summary>
 	private static string? EnsureEditorPreviewProject(string godotRoot) {
+		godotRoot = NormalizeDir(godotRoot);
 		var parent = Path.GetDirectoryName(godotRoot);
 		if (string.IsNullOrEmpty(parent))
 			return null;
 
-		var existing = Directory.GetFiles(parent, "*.Editor.Preview.csproj", SearchOption.TopDirectoryOnly).FirstOrDefault();
+		var existing = FindExistingPreviewCsproj(godotRoot);
 		if (existing is not null)
 			return existing;
 
@@ -639,18 +879,6 @@ public static class EditorPluginScaffolder {
 		}
 
 		TryAddToLegacySln(solution, text, rel.Replace('/', '\\'), previewName);
-	}
-
-	private static string? FindFileUp(string start, string pattern, int maxHops) {
-		var dir = new DirectoryInfo(start);
-		for (var i = 0; i < maxHops && dir is not null; i++) {
-			var hits = dir.GetFiles(pattern);
-			if (hits.Length > 0)
-				return hits[0].FullName;
-			dir = dir.Parent;
-		}
-
-		return null;
 	}
 
 	private static void Write(string path, string contents, List<string> written) {

@@ -23,7 +23,14 @@ public static class EditorPluginWizardL10n {
 		string AddToPreview,
 		string Create,
 		string Creating,
-		string DefaultTitle
+		string DefaultTitle,
+		string ManageHeading,
+		string ManageIntro,
+		string Uninstall,
+		string ConfirmUninstall,
+		string Cancel,
+		string NoPlugins,
+		string Uninstalling
 	);
 
 	public static Strings ForLocale(string? locale)
@@ -75,7 +82,14 @@ public static class EditorPluginWizardL10n {
 		AddToPreview: "Reference from Editor.Preview",
 		Create: "Create",
 		Creating: "Creating…",
-		DefaultTitle: "Inspector"
+		DefaultTitle: "Inspector",
+		ManageHeading: "Installed plugins",
+		ManageIntro: "Uninstall removes the page JSON, editor project, Preview reference, and solution entry. The shared Godonia host stays enabled.",
+		Uninstall: "Uninstall",
+		ConfirmUninstall: "Confirm uninstall",
+		Cancel: "Cancel",
+		NoPlugins: "No editor plugins installed yet.",
+		Uninstalling: "Uninstalling…"
 	);
 
 	private static readonly Strings Zh = new(
@@ -95,7 +109,14 @@ public static class EditorPluginWizardL10n {
 		AddToPreview: "引用到 Editor.Preview",
 		Create: "创建",
 		Creating: "正在创建…",
-		DefaultTitle: "Inspector"
+		DefaultTitle: "Inspector",
+		ManageHeading: "已安装插件",
+		ManageIntro: "卸载会删除面板 JSON、编辑器工程、Preview 引用和解决方案条目。不会关闭 Godonia 宿主插件。",
+		Uninstall: "卸载",
+		ConfirmUninstall: "确认卸载",
+		Cancel: "取消",
+		NoPlugins: "还没有安装的面板插件。",
+		Uninstalling: "正在卸载…"
 	);
 
 }

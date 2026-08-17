@@ -3,6 +3,12 @@
 # Usage:
 #   .\scripts\deploy-godonia-editor.ps1
 #   .\scripts\deploy-godonia-editor.ps1 -GodotBin C:\path\to\godot\bin
+#
+# When copying the editor to another PC, copy the entire bin folder, including:
+#   GodotSharp\Godonia\project-template   (Avalonia starter: UI + Editor.Preview)
+#   GodotSharp\Godonia\nupkg              (Ouse.Godonia.1.0.0.nupkg)
+#   GodotSharp\Godonia\runtime
+# Copying only the .exe yields a vanilla Godot C# project with no Avalonia.
 
 param(
 	[string]$GodotBin = ""
@@ -53,13 +59,26 @@ if (Test-Path $globalCache) {
 	Remove-Item $globalCache -Recurse -Force
 }
 
+$packagesDir = Join-Path $destRoot "packages"
+if (Test-Path $packagesDir) {
+	Write-Host "Removing leftover editor-local package cache $packagesDir"
+	Remove-Item $packagesDir -Recurse -Force
+}
+
 if (Test-Path $templateSrc) {
 	Write-Host "Syncing project-template -> $templateDir"
 	if (Test-Path $templateDir) {
 		Remove-Item $templateDir -Recurse -Force
 	}
-	New-Item -ItemType Directory -Force -Path (Split-Path $templateDir) | Out-Null
-	Copy-Item $templateSrc $templateDir -Recurse -Force
+	New-Item -ItemType Directory -Force -Path $templateDir | Out-Null
+	Get-ChildItem $templateSrc -Force | Where-Object { $_.Name -notin @('bin', 'obj', '.godot') } | ForEach-Object {
+		Copy-Item $_.FullName (Join-Path $templateDir $_.Name) -Recurse -Force
+	}
+	$toolsTemplate = Join-Path $GodotBin "GodotSharp\Tools\project-template"
+	if (Test-Path $toolsTemplate) {
+		Remove-Item $toolsTemplate -Recurse -Force
+	}
+	Copy-Item $templateDir $toolsTemplate -Recurse -Force
 }
 else {
 	Write-Warning "No editor\project-template in repo; Godonia new-project bootstrap will be skipped."

@@ -212,6 +212,17 @@ public static class EditorPluginCatalog {
 			Reload(id);
 	}
 
+	/// <summary>Drops a plugin from the catalog and unloads its ALC. Docks are torn down by the host plugin.</summary>
+	public static void Unregister(string id) {
+		if (string.IsNullOrWhiteSpace(id))
+			return;
+
+		DetachHosts(id);
+		UnloadPlugin(id, recreate: false);
+		lock (s_lock)
+			s_manifests.Remove(id);
+	}
+
 	/// <summary>Unloads every plugin ALC without creating new pages (game ALC is going away).</summary>
 	public static void UnloadAll() {
 		List<string> ids;

@@ -188,8 +188,16 @@ namespace GodotTools
                 return;
 
             string path = Path.Combine(projectDir, "nuget.config");
+            string nupkgUnix = nupkg.Replace('\\', '/');
+
             if (File.Exists(path))
-                return;
+            {
+                string existing = File.ReadAllText(path);
+                if (!existing.Contains("godonia-editor", StringComparison.OrdinalIgnoreCase))
+                    return;
+                if (!existing.Contains("globalPackagesFolder", StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
 
             File.WriteAllText(path, $"""
                 <?xml version="1.0" encoding="utf-8"?>
@@ -197,7 +205,7 @@ namespace GodotTools
                   <packageSources>
                     <clear />
                     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
-                    <add key="godonia-editor" value="{nupkg}" />
+                    <add key="godonia-editor" value="{nupkgUnix}" />
                   </packageSources>
                   <packageSourceMapping>
                     <packageSource key="godonia-editor">

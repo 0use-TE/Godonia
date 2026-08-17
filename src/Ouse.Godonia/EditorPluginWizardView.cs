@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -28,7 +29,9 @@ public sealed class EditorPluginWizardView : UserControl {
 	private readonly AvCheckBox _previewBox;
 	private readonly TextBlock _status;
 	private readonly AvButton _create;
+	private readonly StackPanel _installedPanel;
 	private bool _syncing;
+	private string? _pendingUninstallId;
 
 	public EditorPluginWizardView(string? editorLocale = null) {
 		_t = EditorPluginWizardL10n.ForLocale(editorLocale);
@@ -52,6 +55,7 @@ public sealed class EditorPluginWizardView : UserControl {
 		_previewBox = new AvCheckBox { Content = _t.AddToPreview, IsChecked = true };
 		_status = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = 0.85 };
 		_create = new AvButton { Content = _t.Create, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left };
+		_installedPanel = new StackPanel { Spacing = 8 };
 
 		_titleBox.Text = _t.DefaultTitle;
 		SyncFromTitle();
@@ -64,7 +68,7 @@ public sealed class EditorPluginWizardView : UserControl {
 
 		Content = new ScrollViewer {
 			Content = new StackPanel {
-				Margin = new Avalonia.Thickness(16),
+				Margin = new Thickness(16),
 				Spacing = 10,
 				Children = {
 					new TextBlock {
@@ -89,10 +93,29 @@ public sealed class EditorPluginWizardView : UserControl {
 					_slnBox,
 					_previewBox,
 					_create,
-					_status
+					_status,
+					new Border {
+						Height = 1,
+						Margin = new Thickness(0, 8, 0, 4),
+						Background = Brushes.White,
+						Opacity = 0.2
+					},
+					new TextBlock {
+						Text = _t.ManageHeading,
+						FontSize = 20,
+						FontWeight = FontWeight.SemiBold
+					},
+					new TextBlock {
+						Text = _t.ManageIntro,
+						TextWrapping = TextWrapping.Wrap,
+						Opacity = 0.85
+					},
+					_installedPanel
 				}
 			}
 		};
+
+		RefreshInstalled();
 	}
 
 	private static TextBlock Label(string text)
@@ -122,6 +145,109 @@ public sealed class EditorPluginWizardView : UserControl {
 		if (index < 0 || index >= _slots.Length)
 			return "Left";
 		return _slots[index].Slot;
+	}
+
+	private string SlotLabel(string slot) {
+		foreach (var pair in _slots) {
+			if (string.Equals(pair.Slot, slot, StringComparison.OrdinalIgnoreCase))
+				return pair.Label;
+		}
+
+		return slot;
+	}
+
+	private static string? TryGodotRoot() {
+		try {
+			return ProjectSettings.GlobalizePath("res://");
+		}
+		catch {
+			return null;
+		}
+	}
+
+	private void RefreshInstalled() {
+		_installedPanel.Children.Clear();
+		var root = TryGodotRoot();
+		if (root is null) {
+			_installedPanel.Children.Add(new TextBlock {
+				Text = _t.NoPlugins,
+				Opacity = 0.7,
+				TextWrapping = TextWrapping.Wrap
+			});
+			return;
+		}
+
+		var plugins = EditorPluginScaffolder.ListInstalled(root);
+		if (plugins.Count == 0) {
+			_installedPanel.Children.Add(new TextBlock {
+				Text = _t.NoPlugins,
+				Opacity = 0.7,
+				TextWrapping = TextWrapping.Wrap
+			});
+			return;
+		}
+
+		foreach (var plugin in plugins)
+			_installedPanel.Children.Add(InstalledRow(plugin));
+	}
+
+	private Avalonia.Controls.Control InstalledRow(InstalledEditorPlugin plugin) {
+		var pending = string.Equals(_pendingUninstallId, plugin.Id, StringComparison.OrdinalIgnoreCase);
+		var actions = new StackPanel {
+			Orientation = Avalonia.Layout.Orientation.Horizontal,
+			Spacing = 8
+		};
+
+		if (pending) {
+			var confirm = new AvButton {
+				Content = _t.ConfirmUninstall,
+				HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
+			};
+			confirm.Click += (_, _) => Uninstall(plugin.Id);
+			var cancel = new AvButton {
+				Content = _t.Cancel,
+				HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
+			};
+			cancel.Click += (_, _) => {
+				_pendingUninstallId = null;
+				RefreshInstalled();
+			};
+			actions.Children.Add(confirm);
+			actions.Children.Add(cancel);
+		}
+		else {
+			var uninstall = new AvButton {
+				Content = _t.Uninstall,
+				HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
+			};
+			uninstall.Click += (_, _) => {
+				_pendingUninstallId = plugin.Id;
+				RefreshInstalled();
+			};
+			actions.Children.Add(uninstall);
+		}
+
+		return new Border {
+			Padding = new Thickness(10),
+			CornerRadius = new CornerRadius(4),
+			Background = new SolidColorBrush(Avalonia.Media.Color.FromArgb(28, 255, 255, 255)),
+			Child = new StackPanel {
+				Spacing = 4,
+				Children = {
+					new TextBlock {
+						Text = plugin.Title,
+						FontWeight = FontWeight.SemiBold
+					},
+					new TextBlock {
+						Text = plugin.Id + " · " + SlotLabel(plugin.DockSlot),
+						FontSize = 12,
+						Opacity = 0.7,
+						TextWrapping = TextWrapping.Wrap
+					},
+					actions
+				}
+			}
+		};
 	}
 
 	private void Create() {
@@ -158,12 +284,28 @@ public sealed class EditorPluginWizardView : UserControl {
 
 			EditorPluginCatalog.NotifyPagesChanged();
 			_status.Text = status;
+			_pendingUninstallId = null;
+			RefreshInstalled();
 		}
 		catch (Exception ex) {
 			_status.Text = ex.Message;
 		}
 		finally {
 			_create.IsEnabled = true;
+		}
+	}
+
+	private void Uninstall(string pluginId) {
+		_status.Text = _t.Uninstalling;
+		try {
+			var root = ProjectSettings.GlobalizePath("res://");
+			var result = EditorPluginScaffolder.Uninstall(root, pluginId);
+			_status.Text = result.Message;
+			_pendingUninstallId = null;
+			RefreshInstalled();
+		}
+		catch (Exception ex) {
+			_status.Text = ex.Message;
 		}
 	}
 

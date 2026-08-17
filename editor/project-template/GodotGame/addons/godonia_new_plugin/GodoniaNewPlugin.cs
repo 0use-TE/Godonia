@@ -149,23 +149,32 @@ public partial class GodoniaNewPlugin : EditorPlugin {
 
 	private void LoadPageManifests() {
 		var dir = ProjectSettings.GlobalizePath("res://addons/godonia_new_plugin/pages");
-		if (!Directory.Exists(dir))
-			return;
-
+		var dockSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		var mainScreenSeen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-		foreach (var json in Directory.EnumerateFiles(dir, "*.json")) {
-			EditorPluginCatalog.RegisterManifest(json);
-			var manifest = TryReadManifest(json);
-			if (manifest is null || string.IsNullOrWhiteSpace(manifest.Id))
-				continue;
 
-			if (EditorPluginScaffolder.IsMainScreenSlot(manifest.DockSlot)) {
-				mainScreenSeen.Add(manifest.Id);
-				EnsureMainScreenPage(manifest);
+		if (Directory.Exists(dir)) {
+			foreach (var json in Directory.EnumerateFiles(dir, "*.json")) {
+				EditorPluginCatalog.RegisterManifest(json);
+				var manifest = TryReadManifest(json);
+				if (manifest is null || string.IsNullOrWhiteSpace(manifest.Id))
+					continue;
+
+				if (EditorPluginScaffolder.IsMainScreenSlot(manifest.DockSlot)) {
+					mainScreenSeen.Add(manifest.Id);
+					EnsureMainScreenPage(manifest);
+				}
+				else {
+					dockSeen.Add(manifest.Id);
+					EnsurePageDock(manifest);
+				}
 			}
-			else {
-				EnsurePageDock(manifest);
-			}
+		}
+
+		foreach (var id in _pages.Keys.ToArray()) {
+			if (dockSeen.Contains(id))
+				continue;
+			TearDown(_pages[id]);
+			_pages.Remove(id);
 		}
 
 		for (var i = _mainScreens.Count - 1; i >= 0; i--) {

@@ -80,6 +80,57 @@ public sealed class EditorPluginScaffolderTests {
 	}
 
 	[Fact]
+	public void Create_adds_project_reference_to_sibling_preview() {
+		var root = Path.Combine(Path.GetTempPath(), "godonia-scaffold-preview-" + Path.GetRandomFileName());
+		var godot = Path.Combine(root, "HelloWorld");
+		var previewDir = Path.Combine(root, "HelloWorld.Editor.Preview");
+		Directory.CreateDirectory(godot);
+		Directory.CreateDirectory(previewDir);
+		File.WriteAllText(Path.Combine(godot, "project.godot"), "config_version=5\n");
+		File.WriteAllText(Path.Combine(godot, "Godonia.EditorPlugin.props"), "<Project />\n");
+		File.WriteAllText(Path.Combine(godot, "Godonia.EditorPlugin.targets"), "<Project />\n");
+		var previewCsproj = Path.Combine(previewDir, "HelloWorld.Editor.Preview.csproj");
+		File.WriteAllText(previewCsproj, """
+			<Project Sdk="Microsoft.NET.Sdk">
+				<PropertyGroup>
+					<OutputType>WinExe</OutputType>
+					<TargetFramework>net10.0</TargetFramework>
+				</PropertyGroup>
+				<ItemGroup>
+					<PackageReference Include="Avalonia.Desktop" />
+					<PackageReference Include="Ouse.Godonia" />
+				</ItemGroup>
+			</Project>
+			""");
+
+		try {
+			var result = EditorPluginScaffolder.Create(new EditorPluginScaffoldRequest {
+				GodotProjectRoot = godot + Path.DirectorySeparatorChar,
+				Title = "Skill Tree",
+				Name = "SkillTree",
+				PluginId = "helloworld.skill.tree",
+				UseMvvm = false,
+				AddToSolution = false,
+				AddToPreview = true,
+				EnableInProject = false
+			});
+
+			Assert.True(result.Success, result.Message);
+			var preview = File.ReadAllText(previewCsproj);
+			Assert.Contains("HelloWorld.Editor.SkillTree.csproj", preview, StringComparison.Ordinal);
+			Assert.Contains("../HelloWorld.Editor.SkillTree/HelloWorld.Editor.SkillTree.csproj", preview.Replace('\\', '/'), StringComparison.Ordinal);
+			Assert.False(Directory.Exists(Path.Combine(godot, "HelloWorld.Editor.Preview")));
+		}
+		finally {
+			try {
+				Directory.Delete(root, recursive: true);
+			}
+			catch {
+			}
+		}
+	}
+
+	[Fact]
 	public void Create_writes_mvvm_plugin_without_godot_addon() {
 		var root = Path.Combine(Path.GetTempPath(), "godonia-scaffold-" + Path.GetRandomFileName());
 		var godot = Path.Combine(root, "HelloWorld");
@@ -121,6 +172,82 @@ public sealed class EditorPluginScaffolderTests {
 			}
 			catch {
 				// temp cleanup is best-effort
+			}
+		}
+	}
+
+	[Fact]
+	public void Uninstall_removes_manifest_project_preview_ref_slnx_and_cached_dll() {
+		var root = Path.Combine(Path.GetTempPath(), "godonia-uninstall-" + Path.GetRandomFileName());
+		var godot = Path.Combine(root, "HelloWorld");
+		var previewDir = Path.Combine(root, "HelloWorld.Editor.Preview");
+		Directory.CreateDirectory(godot);
+		Directory.CreateDirectory(previewDir);
+		File.WriteAllText(Path.Combine(godot, "project.godot"), "config_version=5\n");
+		File.WriteAllText(Path.Combine(godot, "Godonia.EditorPlugin.props"), "<Project />\n");
+		File.WriteAllText(Path.Combine(godot, "Godonia.EditorPlugin.targets"), "<Project />\n");
+		var previewCsproj = Path.Combine(previewDir, "HelloWorld.Editor.Preview.csproj");
+		File.WriteAllText(previewCsproj, """
+			<Project Sdk="Microsoft.NET.Sdk">
+				<PropertyGroup>
+					<OutputType>WinExe</OutputType>
+					<TargetFramework>net10.0</TargetFramework>
+				</PropertyGroup>
+				<ItemGroup>
+					<PackageReference Include="Avalonia.Desktop" />
+					<PackageReference Include="Ouse.Godonia" />
+				</ItemGroup>
+			</Project>
+			""");
+		File.WriteAllText(Path.Combine(root, "App.slnx"), """
+			<Solution>
+			  <Folder Name="/Samples/">
+			  </Folder>
+			</Solution>
+			""");
+
+		try {
+			var created = EditorPluginScaffolder.Create(new EditorPluginScaffoldRequest {
+				GodotProjectRoot = godot,
+				Title = "Skill Tree",
+				Name = "SkillTree",
+				PluginId = "helloworld.skill.tree",
+				UseMvvm = false,
+				AddToSolution = true,
+				AddToPreview = true,
+				EnableInProject = false
+			});
+			Assert.True(created.Success, created.Message);
+
+			var cacheDir = Path.Combine(godot, ".godot", "godonia-plugins");
+			Directory.CreateDirectory(cacheDir);
+			var dll = Path.Combine(cacheDir, "HelloWorld.Editor.SkillTree.dll");
+			var shadow = Path.Combine(cacheDir, "HelloWorld.Editor.SkillTree.12.dll");
+			var other = Path.Combine(cacheDir, "HelloWorld.Editor.QuestManager.dll");
+			File.WriteAllText(dll, "dll");
+			File.WriteAllText(shadow, "shadow");
+			File.WriteAllText(other, "keep");
+
+			var listed = EditorPluginScaffolder.ListInstalled(godot);
+			Assert.Contains(listed, p => p.Id == "helloworld.skill.tree");
+			Assert.Equal("Skill Tree", listed[0].Title);
+
+			var removed = EditorPluginScaffolder.Uninstall(godot, "helloworld.skill.tree");
+			Assert.True(removed.Success, removed.Message);
+			Assert.False(File.Exists(Path.Combine(godot, "addons", "godonia_new_plugin", "pages", "helloworld.skill.tree.json")));
+			Assert.False(Directory.Exists(created.PluginProjectDir));
+			Assert.DoesNotContain("SkillTree.csproj", File.ReadAllText(previewCsproj), StringComparison.Ordinal);
+			Assert.DoesNotContain("SkillTree.csproj", File.ReadAllText(Path.Combine(root, "App.slnx")), StringComparison.Ordinal);
+			Assert.False(File.Exists(dll));
+			Assert.False(File.Exists(shadow));
+			Assert.True(File.Exists(other));
+			Assert.Empty(EditorPluginScaffolder.ListInstalled(godot));
+		}
+		finally {
+			try {
+				Directory.Delete(root, recursive: true);
+			}
+			catch {
 			}
 		}
 	}
